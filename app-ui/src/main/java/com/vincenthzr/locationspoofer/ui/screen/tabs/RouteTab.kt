@@ -38,6 +38,8 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -111,6 +113,30 @@ fun RouteTab(
     var showSaveRouteDialog by remember { mutableStateOf(false) }
     var showSavedRoutesDialog by remember { mutableStateOf(false) }
     var showRealRouteDialog by rememberSaveable { mutableStateOf(false) }
+    val realRecorder = viewModel.realRouteRecorder
+    val recordingSession = realRecorder.recording || realRecorder.starting
+    var followRecording by remember { mutableStateOf(false) }
+    var followOrigin by remember { mutableStateOf<Pair<Double, Double>?>(null) }
+    val setRecordingFollow: (Boolean) -> Unit = { enabled ->
+        if (enabled && followOrigin == null) {
+            val lat = mapController?.cameraTargetLat
+            val lng = mapController?.cameraTargetLng
+            if (lat != null && lng != null) followOrigin = lat to lng
+        }
+        if (!enabled) followOrigin = null
+        followRecording = enabled
+    }
+    LaunchedEffect(mapController) {
+        followRecording = false
+        followOrigin = null
+    }
+    val onMapDrag by rememberUpdatedState {
+        if (followRecording) setRecordingFollow(false)
+    }
+    DisposableEffect(mapController, isActive) {
+        if (isActive) mapController?.setOnUserDragListener { onMapDrag() }
+        onDispose { mapController?.setOnUserDragListener(null) }
+    }
     val isDomestic = viewModel.isDomesticEnvironment()
     var searchQuery by remember { mutableStateOf("") }
     var searchResults by remember { mutableStateOf<List<AppPoiItem>>(emptyList()) }
@@ -181,7 +207,8 @@ fun RouteTab(
 
     val manageDataList = manageDataViewModel.uiState.collectAsState().value.dataList
     var liveMarker by remember { mutableStateOf<AppMapMarker?>(null) }
-    LaunchedEffect(routePoints, mapController, manageDataList, isActive, collectionRoutes, uiState.selectedCollectionRouteId) {
+    val realPoints = if (recordingSession) realRecorder.points else emptyList()
+    LaunchedEffect(routePoints, realPoints, mapController, manageDataList, isActive, collectionRoutes, uiState.selectedCollectionRouteId) {
         if (!isActive) return@LaunchedEffect
         val map = mapController ?: return@LaunchedEffect
         map.clear()
@@ -223,6 +250,13 @@ fun RouteTab(
             )
         }
 
+        if (realPoints.size >= 2) {
+            map.addPolyline(realPoints.map { it.lat to it.lng }, android.graphics.Color.parseColor("#FFF28C28"), 6f)
+        }
+        realPoints.lastOrNull()?.let { point ->
+            map.addMarker(point.lat, point.lng, context.getString(R.string.real_route_latest_point), MarkerType.ORANGE)
+        }
+
         if (uiState.isSpoofingActive) {
             val currentLat = uiState.latitudeInput.toDoubleOrNull()
             val currentLng = uiState.longitudeInput.toDoubleOrNull()
@@ -233,6 +267,16 @@ fun RouteTab(
                     MarkerType.ORANGE
                 )
             }
+        }
+    }
+
+    LaunchedEffect(recordingSession, followRecording, realPoints.lastOrNull(), isActive, mapController) {
+        if (!recordingSession) {
+            if (isActive) followOrigin?.let { mapController?.animateCamera(it.first, it.second) }
+            followOrigin = null
+            followRecording = false
+        } else if (isActive && followRecording) {
+            realPoints.lastOrNull()?.let { mapController?.animateCamera(it.lat, it.lng) }
         }
     }
 
@@ -448,6 +492,18 @@ fun RouteTab(
                             icon = Icons.Rounded.FiberManualRecord,
                             onClick = { showRealRouteDialog = true }
                         )
+                        if (recordingSession) {
+                            val label = stringResource(R.string.real_route_follow)
+                            val state = stringResource(if (followRecording) R.string.real_route_follow_on else R.string.real_route_follow_off)
+                            IconToggleButton(
+                                checked = followRecording,
+                                onCheckedChange = setRecordingFollow,
+                                modifier = Modifier.size(46.dp).semantics { stateDescription = state }
+                            ) {
+                                Icon(Icons.Rounded.MyLocation, contentDescription = label,
+                                    tint = if (followRecording) AccentOrange else AccentBlue)
+                            }
+                        }
                         RouteControlButton(
                             icon = Icons.Rounded.Bookmarks,
                             onClick = { showSavedRoutesDialog = true }
@@ -674,7 +730,7 @@ fun RouteTab(
     }
 
     if (showRealRouteDialog) {
-        RealRouteRecordingDialog(viewModel, uiState.isSpoofingActive) { showRealRouteDialog = false }
+        RealRouteRecordingDialog(viewModel, uiState.isSpoofingActive, followRecording, setRecordingFollow) { showRealRouteDialog = false }
     }
 
     if (showSavedRoutesDialog) {

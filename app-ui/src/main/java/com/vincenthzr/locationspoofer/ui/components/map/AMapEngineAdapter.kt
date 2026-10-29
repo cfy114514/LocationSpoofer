@@ -23,8 +23,10 @@ import com.vincenthzr.locationspoofer.ui.components.MarkerType
 
 class AMapControllerImpl(
     private val map: AMap,
-    private val context: Context
+    private val context: Context,
+    private val interaction: MapInteractionContainer? = null
 ) : AppMapController {
+    override fun setOnUserDragListener(listener: (() -> Unit)?) { interaction?.onUserDrag = listener }
     private var isDarkMode: Boolean = false
     private var currentMapType: AppMapType = AppMapType.NORMAL
 
@@ -255,15 +257,17 @@ fun AMapViewContainer(
 
     AndroidView(
         factory = {
+            val container = MapInteractionContainer(context)
             amapView.apply {
                 setOnTouchListener { v, _ -> v.parent?.requestDisallowInterceptTouchEvent(true); false }
                 map.setOnMapLoadedListener {
-                    val controller = AMapControllerImpl(map, context)
+                    val controller = AMapControllerImpl(map, context, container)
                     onControllerCreated(controller)
                     controller.setDarkMode(isDark, context)
                     onMapReady(controller)
                 }
             }
+            container.apply { addView(amapView, android.widget.FrameLayout.LayoutParams(-1, -1)) }
         },
         modifier = modifier
     )

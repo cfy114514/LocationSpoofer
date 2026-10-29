@@ -10,6 +10,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 class SettingsManager(context: Context) {
+    private val defaultMapEngine = if (context.packageName == "com.vincenthzr.locationspoofer.cfytest") "OSM" else "AUTO"
     private val defaultRestartAppsOnSpoof = context.packageName != "com.vincenthzr.locationspoofer.cfytest"
     private val prefs: SharedPreferences =
         context.getSharedPreferences("app_settings", Context.MODE_PRIVATE)
@@ -69,7 +70,7 @@ class SettingsManager(context: Context) {
         set(value) = prefs.edit().putString("map_type", value).apply()
 
     var mapEngine: String
-        get() = prefs.getString("map_engine", "AUTO") ?: "AUTO"
+        get() = prefs.getString("map_engine", defaultMapEngine) ?: defaultMapEngine
         set(value) = prefs.edit().putString("map_engine", value).apply()
 
     var rootSolution: String

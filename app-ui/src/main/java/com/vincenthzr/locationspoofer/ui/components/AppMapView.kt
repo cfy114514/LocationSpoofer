@@ -48,6 +48,7 @@ interface AppMapController {
     val cameraTargetLng: Double?
     fun setOnCameraChangeListener(onFinish: (lat: Double, lng: Double) -> Unit)
     fun setOnCameraMoveListener(onMove: (lat: Double, lng: Double) -> Unit)
+    fun setOnUserDragListener(listener: (() -> Unit)?) {}
     fun disableUiControls()
     fun setMapType(type: AppMapType)
     fun setDarkMode(isDark: Boolean, context: android.content.Context)

@@ -41,7 +41,8 @@ private fun osmPoint(lat: Double, lng: Double): GeoPoint {
     return GeoPoint(point.first, point.second)
 }
 
-class OsmMapController(private val map: MapView, private val context: Context) : AppMapController {
+class OsmMapController(private val map: MapView, private val context: Context, private val interaction: MapInteractionContainer? = null) : AppMapController {
+    override fun setOnUserDragListener(listener: (() -> Unit)?) { interaction?.onUserDrag = listener }
     private val handler = Handler(Looper.getMainLooper())
     private var onFinish: ((Double, Double) -> Unit)? = null
     private var onMove: ((Double, Double) -> Unit)? = null
@@ -124,7 +125,8 @@ fun OsmMapViewContainer(context: Context, lifecycleOwner: LifecycleOwner, modifi
         }
         MapView(context).apply { setTileSource(TileSourceFactory.MAPNIK); setMultiTouchControls(true) }
     }
-    val controller = remember(map) { OsmMapController(map, context) }
+    val interaction = remember(map) { MapInteractionContainer(context) }
+    val controller = remember(map) { OsmMapController(map, context, interaction) }
     DisposableEffect(lifecycleOwner, map) {
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
@@ -139,10 +141,12 @@ fun OsmMapViewContainer(context: Context, lifecycleOwner: LifecycleOwner, modifi
     }
     val uriHandler = LocalUriHandler.current
     Box(modifier) {
-        AndroidView(factory = { map.apply {
-            setOnTouchListener { v, _ -> v.parent?.requestDisallowInterceptTouchEvent(true); false }
+        AndroidView(factory = {
+            map.setOnTouchListener { v, _ -> v.parent?.requestDisallowInterceptTouchEvent(true); false }
+            interaction.addView(map, android.widget.FrameLayout.LayoutParams(-1, -1))
             onControllerCreated(controller); onMapReady(controller)
-        } }, modifier = Modifier.fillMaxSize())
+            interaction
+        }, modifier = Modifier.fillMaxSize())
         Text("© OpenStreetMap contributors", modifier = Modifier.align(Alignment.TopStart)
             .background(Color.White.copy(alpha = 0.85f))
             .clickable { uriHandler.openUri("https://www.openstreetmap.org/copyright") }

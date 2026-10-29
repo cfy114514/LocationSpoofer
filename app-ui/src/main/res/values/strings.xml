@@ -639,6 +639,10 @@ Error details: %s</string>
     <string name="collection_route_delete_message">Delete “%1$s” and all its collected samples?</string>
     <string name="local_collection_records_count">%1$d points · %2$d routes</string>
     <string name="real_route_title">Record a real route</string>
+    <string name="real_route_follow">Follow latest GPS point</string>
+    <string name="real_route_follow_on">Following</string>
+    <string name="real_route_follow_off">Not following</string>
+    <string name="real_route_latest_point">Latest recorded GPS point</string>
     <string name="real_route_foreground_hint">Recording continues in the background. Use the notification to pause. Points after a pause are joined by a straight line. Drafts stay on this device.</string>
     <string name="real_route_stop_spoof">Stop location simulation before recording.</string>
     <string name="real_route_points">Recorded points: %1$d</string>

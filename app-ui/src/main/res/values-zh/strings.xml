@@ -639,6 +639,10 @@
     <string name="collection_route_delete_message">删除“%1$s”及其全部采样数据？</string>
     <string name="local_collection_records_count">%1$d 个点位 · %2$d 条路线</string>
     <string name="real_route_title">录制真实路线</string>
+    <string name="real_route_follow">跟随最新 GPS 录制点</string>
+    <string name="real_route_follow_on">已跟随</string>
+    <string name="real_route_follow_off">未跟随</string>
+    <string name="real_route_latest_point">最新 GPS 录制点</string>
     <string name="real_route_foreground_hint">录制可以在后台继续，可通过通知暂停。暂停前后的点会以直线连接。草稿保存在本机。</string>
     <string name="real_route_stop_spoof">请先停止位置模拟。</string>
     <string name="real_route_points">已记录 %1$d 个点</string>

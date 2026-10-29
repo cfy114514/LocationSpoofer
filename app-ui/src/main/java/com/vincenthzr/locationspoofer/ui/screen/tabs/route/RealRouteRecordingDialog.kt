@@ -20,6 +20,7 @@ import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
@@ -33,7 +34,13 @@ import com.vincenthzr.locationspoofer.data.model.RoutePlanStage
 import kotlinx.coroutines.delay
 
 @Composable
-internal fun RealRouteRecordingDialog(viewModel: MainViewModel, spoofing: Boolean, onDismiss: () -> Unit) {
+internal fun RealRouteRecordingDialog(
+    viewModel: MainViewModel,
+    spoofing: Boolean,
+    followRecording: Boolean,
+    onFollowChange: (Boolean) -> Unit,
+    onDismiss: () -> Unit
+) {
     val recorder = viewModel.realRouteRecorder
     val appState by viewModel.uiState.collectAsState()
     var statsNow by remember { mutableLongStateOf(SystemClock.elapsedRealtime()) }
@@ -108,6 +115,13 @@ internal fun RealRouteRecordingDialog(viewModel: MainViewModel, spoofing: Boolea
                 if (!notificationAllowed) Text(stringResource(R.string.real_route_notification_denied), color = MaterialTheme.colorScheme.error)
                 if (spoofing) Text(stringResource(R.string.real_route_stop_spoof), color = MaterialTheme.colorScheme.error)
                 Text(stringResource(R.string.real_route_stats, recordedDistance.toInt(), formatRecordingDuration(recorder.statistics.elapsed(statsNow)), recorder.points.size))
+                val followLabel = stringResource(R.string.real_route_follow)
+                Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                    Text(followLabel, modifier = Modifier.weight(1f))
+                    Switch(checked = followRecording, onCheckedChange = onFollowChange,
+                        modifier = Modifier.semantics { contentDescription = followLabel },
+                        enabled = recorder.recording || recorder.starting)
+                }
                 Text(stringResource(R.string.real_route_stats_rules), style = MaterialTheme.typography.bodySmall)
                 if (permissionDenied) Text(stringResource(R.string.real_route_permission_error), color = MaterialTheme.colorScheme.error)
                 if (recorder.error != null && !(recorder.error == "gap" && recorder.hasGap) &&
