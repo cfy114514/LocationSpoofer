@@ -15,6 +15,7 @@ jobs:
         with:
           distribution: temurin
           java-version: '21'
+          cache: gradle
       - uses: android-actions/setup-android@v3
         with:
           packages: platform-tools
@@ -25,7 +26,7 @@ jobs:
           name: scoped-coexist-apks
           path: app/build/outputs/apk/scoped/coexist/*.apk
           if-no-files-found: error
-      - run: ./gradlew --no-daemon :core-geo:test :xposed:test :app-ui:testScopedDebugUnitTest
+      - run: ./gradlew --no-daemon :core-geo:test :xposed:test :app-ui:testScopedDebugUnitTest :core-data:testScopedDebugUnitTest :service:testDebugUnitTest
       - if: always()
         uses: actions/upload-artifact@v4
         with:

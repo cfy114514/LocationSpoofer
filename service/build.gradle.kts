@@ -34,6 +34,7 @@ kotlin {
 
 dependencies {
     implementation(project(":core-data"))
+    testImplementation(libs.junit)
 
     implementation(libs.koin.android)
 

@@ -26,6 +26,7 @@ import androidx.compose.ui.window.DialogProperties
 import com.vincenthzr.locationspoofer.ui.R
 import com.vincenthzr.locationspoofer.data.model.AppState
 import com.vincenthzr.locationspoofer.data.model.RouteRunMode
+import com.vincenthzr.locationspoofer.data.model.RouteTravelMode
 import com.vincenthzr.locationspoofer.data.model.SimMode
 import com.vincenthzr.locationspoofer.ui.screen.AltitudeSettingsCard
 import com.vincenthzr.locationspoofer.ui.theme.AccentBlue
@@ -40,6 +41,7 @@ fun RouteConfigDialog(
     onSpeedChange: (SimMode) -> Unit,
     onCustomSpeedChange: (Double) -> Unit = {},
     onUseRealRouteChange: (Boolean) -> Unit = {},
+    onRouteTravelModeChange: (RouteTravelMode) -> Unit = {},
     onStopAtDestinationChange: (Boolean) -> Unit = {},
     onRouteLateralDeviationChange: (Boolean) -> Unit = {},
     onEnableStepSimulationChange: (Boolean) -> Unit = {},
@@ -549,6 +551,23 @@ fun RouteConfigDialog(
                         }
                     }
 
+
+                    if (uiState.useRealRoute) {
+                        Text(stringResource(R.string.road_travel_mode), fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                        Text(stringResource(R.string.road_travel_mode_hint), fontSize = 12.sp)
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            listOf(
+                                RouteTravelMode.WALKING to R.string.walking,
+                                RouteTravelMode.CYCLING to R.string.cycling,
+                                RouteTravelMode.DRIVING to R.string.driving
+                            ).forEach { (mode, label) ->
+                                FilterChip(selected = uiState.routeTravelMode == mode,
+                                    onClick = { onRouteTravelModeChange(mode) },
+                                    label = { Text(stringResource(label), maxLines = 1) },
+                                    modifier = Modifier.weight(1f))
+                            }
+                        }
+                    }
 
                     // 环境模拟（Wi-Fi / 基站 / 蓝牙 / 抖动 / 卫星数）
                     // 这些参数路线模拟本来就已经传给底层了，只是之前没有入口，

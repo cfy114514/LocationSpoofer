@@ -68,6 +68,7 @@ import com.vincenthzr.locationspoofer.viewmodel.finishSelectingPoints
 import com.vincenthzr.locationspoofer.viewmodel.isDomesticEnvironment
 import com.vincenthzr.locationspoofer.viewmodel.performLocalSearch
 import com.vincenthzr.locationspoofer.viewmodel.restartSelectingPoints
+import com.vincenthzr.locationspoofer.viewmodel.cancelPendingRoadRoute
 import com.vincenthzr.locationspoofer.viewmodel.setCustomSpeedMs
 import com.vincenthzr.locationspoofer.viewmodel.setEnableStepSimulation
 import com.vincenthzr.locationspoofer.viewmodel.setIsAutoCadence
@@ -81,6 +82,7 @@ import com.vincenthzr.locationspoofer.viewmodel.setStepCadenceSpm
 import com.vincenthzr.locationspoofer.viewmodel.setStopAtDestination
 import com.vincenthzr.locationspoofer.viewmodel.setRouteLateralDeviation
 import com.vincenthzr.locationspoofer.viewmodel.setUseRealRoute
+import com.vincenthzr.locationspoofer.viewmodel.setRouteTravelMode
 import com.vincenthzr.locationspoofer.viewmodel.startRoutePlanning
 import com.vincenthzr.locationspoofer.viewmodel.stopRoutePlanning
 import com.vincenthzr.locationspoofer.viewmodel.toggleEnableJitter
@@ -623,6 +625,7 @@ fun RouteTab(
             onSpeedChange = viewModel::setRouteSimMode,
             onCustomSpeedChange = viewModel::setCustomSpeedMs,
             onUseRealRouteChange = viewModel::setUseRealRoute,
+            onRouteTravelModeChange = viewModel::setRouteTravelMode,
             onStopAtDestinationChange = viewModel::setStopAtDestination,
             onRouteLateralDeviationChange = viewModel::setRouteLateralDeviation,
             onEnableStepSimulationChange = viewModel::setEnableStepSimulation,
@@ -640,33 +643,16 @@ fun RouteTab(
     }
 
     if (uiState.isFetchingRoute) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.35f)),
-            contentAlignment = Alignment.Center
-        ) {
-            Card(
-                shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                elevation = CardDefaults.cardElevation(defaultElevation = 10.dp),
-                modifier = Modifier.padding(32.dp)
-            ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 20.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    CircularProgressIndicator(modifier = Modifier.size(24.dp), color = AccentBlue)
-                    Text(
-                        stringResource(R.string.planning_route_trajectory),
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
+        AlertDialog(
+            onDismissRequest = { viewModel.cancelPendingRoadRoute() },
+            title = { Text(stringResource(R.string.planning_route_trajectory)) },
+            text = { CircularProgressIndicator(modifier = Modifier.size(24.dp), color = AccentBlue) },
+            confirmButton = {
+                TextButton(onClick = { viewModel.cancelPendingRoadRoute() }) {
+                    Text(stringResource(R.string.cancel))
                 }
             }
-        }
+        )
     }
 
     if (showMapTypeDialog) {

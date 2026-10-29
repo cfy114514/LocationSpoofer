@@ -115,6 +115,7 @@ data class AppState(
     val isAutoCadence: Boolean = true,
     /** 是否使用真实路线规划 */
     val useRealRoute: Boolean = false,
+    val routeTravelMode: RouteTravelMode = RouteTravelMode.DRIVING,
     /** 到达终点后是否停下 */
     val stopAtDestination: Boolean = false,
     val routeLateralDeviation: Boolean = false,

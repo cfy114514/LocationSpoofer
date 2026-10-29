@@ -20,6 +20,6 @@
     <string name="fj_save">保存</string>
     <string name="fj_discard">放弃</string>
     <string name="fj_saved_toast">路线已保存</string>
-    <string name="fj_lock_hint">拖动并保持 1 秒可锁定方向</string>
+    <string name="fj_lock_hint">向一个方向稳定推动 1.5 秒可锁定方向</string>
     <string name="fj_unlock">解锁并停止</string>
 </resources>

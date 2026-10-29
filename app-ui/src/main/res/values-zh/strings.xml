@@ -51,6 +51,7 @@
     <string name="latitude">纬度</string>
     <string name="coordinate_hint">点击上方地图进入全屏选点</string>
     <string name="invalid_coordinates">经纬度数值超出合法范围</string>
+    <string name="invalid_route_waypoints">路线点无效或相邻点距离过近。</string>
     <string name="stop_simulation">停止模拟</string>
     <string name="fixed_simulation">定点模拟</string>
     <string name="route_planning">规划路线</string>
@@ -681,4 +682,6 @@
     <string name="real_route_notification_denied">录制通知不可用，请返回应用暂停录制或查看停止原因。</string>
     <string name="real_route_stats">约 %1$d 米 · %2$s · %3$d 点</string>
     <string name="real_route_stats_rules">距离按已记录点连线计算，包含暂停后的直线连接。时长仅累计录制期间，暂停不计；应用进程重启后归零。</string>
+    <string name="road_travel_mode">道路规划方式</string>
+    <string name="road_travel_mode_hint">道路规划使用高德地图，模拟速度单独设置；规划失败时将提示并使用直线路线。</string>
 </resources>

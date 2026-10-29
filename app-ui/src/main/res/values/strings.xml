@@ -46,6 +46,7 @@
     <string name="latitude">Latitude</string>
     <string name="coordinate_hint">Click map above for fullscreen selection</string>
     <string name="invalid_coordinates">Coordinate values out of range</string>
+    <string name="invalid_route_waypoints">Route points are invalid or too close together.</string>
     <string name="stop_simulation">Stop Simulation</string>
     <string name="fixed_simulation">Fixed Simulation</string>
     <string name="route_planning">Route Planning</string>
@@ -681,4 +682,6 @@ Error details: %s</string>
     <string name="real_route_notification_denied">Notifications for recording are unavailable. Return to the app to pause recording or see why it stopped.</string>
     <string name="real_route_stats">Approx. %1$d m · %2$s · %3$d points</string>
     <string name="real_route_stats_rules">Distance follows recorded points, including straight connections after pauses. Time counts only while recording and resets when the app process restarts.</string>
+    <string name="road_travel_mode">Road travel mode</string>
+    <string name="road_travel_mode_hint">Road selection uses AMap; simulation speed is set separately. On failure, the route falls back to straight lines.</string>
 </resources>

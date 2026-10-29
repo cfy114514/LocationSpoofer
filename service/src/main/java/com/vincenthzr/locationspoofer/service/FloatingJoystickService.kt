@@ -5,6 +5,7 @@ import android.app.Service
 import android.content.Intent
 import android.graphics.PixelFormat
 import android.os.IBinder
+import android.os.SystemClock
 import android.view.Gravity
 import android.view.WindowManager
 import android.widget.Toast
@@ -375,26 +376,32 @@ private fun Joystick(enabled: Boolean, palette: Palette, thumb: Offset, onThumb:
                 if (!enabled) return@pointerInput
                 var dragOffset = Offset.Zero
                 var gestureLocked = false
+                val latch = JoystickDirectionLatch()
                 detectDragGestures(
                     onDragStart = {
                         if (currentLocked) onUnlock()
                         dragOffset = Offset.Zero
                         gestureLocked = false
                         lockJob?.cancel()
+                        latch.reset()
                         lockJob = scope.launch {
-                            delay(1000)
-                            if (dragOffset != Offset.Zero) {
-                                gestureLocked = true
-                                onLocked(true)
+                            while (!gestureLocked) {
+                                delay(50)
+                                if (latch.ready(SystemClock.elapsedRealtime())) {
+                                    gestureLocked = true
+                                    onLocked(true)
+                                }
                             }
                         }
                     },
                     onDragEnd = {
                         lockJob?.cancel()
+                        latch.reset()
                         if (!gestureLocked) onUnlock()
                     },
                     onDragCancel = {
                         lockJob?.cancel()
+                        latch.reset()
                         onUnlock()
                     }
                 ) { change, drag ->
@@ -410,7 +417,9 @@ private fun Joystick(enabled: Boolean, palette: Palette, thumb: Offset, onThumb:
                     }
                     val angle = atan2(next.y.toDouble(), next.x.toDouble())
                     val intensity = (sqrt(next.x * next.x + next.y * next.y) / maxRadiusPx).coerceIn(0f, 1f)
-                    onJoystick((Math.toDegrees(angle) + 90 + 360) % 360, intensity)
+                    val direction = (Math.toDegrees(angle) + 90 + 360) % 360
+                    if (!gestureLocked) latch.update(direction, intensity, SystemClock.elapsedRealtime())
+                    onJoystick(direction, intensity)
                 }
             },
         contentAlignment = Alignment.Center

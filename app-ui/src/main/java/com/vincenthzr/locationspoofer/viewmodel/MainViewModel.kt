@@ -48,6 +48,8 @@ class MainViewModel(
 ) : ViewModel() {
     internal val realRouteRecorder by lazy { com.vincenthzr.locationspoofer.ui.screen.tabs.route.RealRouteRecorder.getInstance(context) }
     internal var lastMapMoveTime = 0L
+    internal var routePlanJob: Job? = null
+    internal var routePlanGeneration: Long = 0L
     internal var mapMoveJob: Job? = null
     internal var gaitRecordingJob: Job? = null
     internal var mockCapabilitiesJob: Job? = null
