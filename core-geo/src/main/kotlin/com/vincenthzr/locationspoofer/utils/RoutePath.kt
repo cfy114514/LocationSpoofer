@@ -58,6 +58,52 @@ class RoutePath(val points: List<LatLng>) {
     val isClosedLoop: Boolean = points.size >= 2 && GeoMath.distance(points.first(), points.last()) <= 5.0
     val isValid: Boolean get() = points.size >= 2 && totalDistance > 0.0
 
+    /** Deterministic lateral movement is derived from distance so pause/resume and
+     * speed changes preserve the same position in the app and hooked processes. */
+    fun positionWithLateralDeviation(distanceTraveled: Double, stopAtDestination: Boolean, seed: Long): Position {
+        val distance = distanceTraveled.coerceAtLeast(0.0)
+        val center = positionAt(distance, stopAtDestination)
+        if (center.arrived) return center
+        fun phase(index: Int): Double {
+            var z = seed + index.toLong() * -7046029254386353131L
+            z = (z xor (z ushr 30)) * -4658895280553007687L
+            z = (z xor (z ushr 27)) * -7723592293110705685L
+            return (z xor (z ushr 31)).ushr(11).toDouble() / 9007199254740992.0 * 2.0 * Math.PI
+        }
+        val phases = DoubleArray(3) { phase(it + 1) }
+
+        fun shiftedAt(d: Double): LatLng {
+            val traveled = d.coerceAtLeast(0.0)
+            val pos = positionAt(traveled, stopAtDestination)
+            val point = LatLng(pos.lat, pos.lng)
+            if (pos.arrived) return point
+            val cycle = if (isClosedLoop) totalDistance else totalDistance * 2.0
+            val cycleDistance = traveled % cycle
+            val along = if (isClosedLoop || cycleDistance <= totalDistance) cycleDistance else cycle - cycleDistance
+            val endpointDistance = minOf(along, totalDistance - along)
+            val fadeLength = minOf(12.0, totalDistance / 4.0)
+            val u = (endpointDistance / fadeLength).coerceIn(0.0, 1.0)
+            val smooth = u * u * u * (u * (u * 6.0 - 15.0) + 10.0)
+            val lateral = 1.8 * smooth * (
+                0.5 * sin(phases[0] + 2.0 * Math.PI * traveled / 83.0) +
+                0.3 * sin(phases[1] + 2.0 * Math.PI * traveled / 139.0) +
+                0.2 * sin(phases[2] + 2.0 * Math.PI * traveled / 227.0))
+            val window = minOf(5.0, totalDistance / 4.0)
+            val before = positionAt((along - window).coerceAtLeast(0.0), true)
+            val after = positionAt((along + window).coerceAtMost(totalDistance), true)
+            val a = LatLng(before.lat, before.lng)
+            val b = LatLng(after.lat, after.lng)
+            val direction = if (GeoMath.distance(a, b) > 0.01) GeoMath.bearing(a, b).toDouble() else pos.bearing.toDouble()
+            return GeoMath.destination(point, direction + 90.0, lateral)
+        }
+
+        val shifted = shiftedAt(distance)
+        val previous = shiftedAt((distance - 0.2).coerceAtLeast(0.0))
+        val next = shiftedAt(distance + 0.2)
+        val bearing = if (GeoMath.distance(previous, next) > 0.01) GeoMath.bearing(previous, next) else center.bearing
+        return center.copy(lat = shifted.lat, lng = shifted.lng, bearing = bearing)
+    }
+
     fun positionAt(distanceTraveled: Double, stopAtDestination: Boolean): Position {
         require(isValid) { "route needs at least two distinct points" }
         val traveled = distanceTraveled.coerceAtLeast(0.0)

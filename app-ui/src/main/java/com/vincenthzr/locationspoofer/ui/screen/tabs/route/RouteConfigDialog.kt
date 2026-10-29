@@ -41,6 +41,7 @@ fun RouteConfigDialog(
     onCustomSpeedChange: (Double) -> Unit = {},
     onUseRealRouteChange: (Boolean) -> Unit = {},
     onStopAtDestinationChange: (Boolean) -> Unit = {},
+    onRouteLateralDeviationChange: (Boolean) -> Unit = {},
     onEnableStepSimulationChange: (Boolean) -> Unit = {},
     onStepCadenceChange: (Int) -> Unit = {},
     onIsAutoCadenceChange: (Boolean) -> Unit = {},
@@ -559,6 +560,12 @@ fun RouteConfigDialog(
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                     )
 
+                    RouteEnvToggleRow(
+                        title = stringResource(R.string.route_lateral_deviation),
+                        subtitle = stringResource(R.string.route_lateral_deviation_desc),
+                        checked = uiState.routeLateralDeviation,
+                        onCheckedChange = onRouteLateralDeviationChange
+                    )
                     if (uiState.canMockWifi || uiState.wigleToken.isNotBlank()) RouteEnvToggleRow(
                         title = stringResource(R.string.mock_wifi_data),
                         checked = uiState.mockWifi,

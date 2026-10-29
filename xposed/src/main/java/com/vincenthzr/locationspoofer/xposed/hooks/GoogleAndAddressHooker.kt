@@ -124,7 +124,7 @@ internal fun LocationHooker.hookGoogleFusedLocation(classLoader: ClassLoader) {
                         XposedHelpers.hookAllMethods(callbackClazz, "onLocationResult") { lChain, _ ->
                             val config = readConfig()
                             if (config != null && config.optBoolean("active", false) &&
-                                currentPackageName.substringBefore(":") != "com.vincenthzr.locationspoofer"
+                                currentPackageName.substringBefore(":") !in setOf("com.vincenthzr.locationspoofer", "com.vincenthzr.locationspoofer.cfytest")
                             ) {
                                 val resultArg = lChain.args.getOrNull(0)
                                 if (resultArg != null) {
@@ -174,7 +174,7 @@ internal fun LocationHooker.hookGoogleFusedLocation(classLoader: ClassLoader) {
                 if (result is android.location.Location) {
                     val config = readConfig()
                     if (config != null && config.optBoolean("active", false) &&
-                        currentPackageName.substringBefore(":") != "com.vincenthzr.locationspoofer"
+                        currentPackageName.substringBefore(":") !in setOf("com.vincenthzr.locationspoofer", "com.vincenthzr.locationspoofer.cfytest")
                     ) {
                         val motion = getCurrentSpoofedMotion("WGS-84")
                         if (motion != null) {

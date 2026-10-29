@@ -51,14 +51,26 @@ internal fun RealRouteRecordingDialog(viewModel: MainViewModel, spoofing: Boolea
                 if (spoofing) Text(stringResource(R.string.real_route_stop_spoof), color = MaterialTheme.colorScheme.error)
                 Text(stringResource(R.string.real_route_points, recorder.points.size))
                 if (permissionDenied) Text(stringResource(R.string.real_route_permission_error), color = MaterialTheme.colorScheme.error)
-                if (recorder.error != null) Text(stringResource(if (recorder.error == "gps") R.string.real_route_gps_error else R.string.real_route_permission_error), color = MaterialTheme.colorScheme.error)
+                if (recorder.error != null) Text(stringResource(when (recorder.error) {
+                    "gps" -> R.string.real_route_gps_error
+                    "limit" -> R.string.real_route_limit
+                    else -> R.string.real_route_permission_error
+                }), color = MaterialTheme.colorScheme.error)
+                if (recorder.hasGap) {
+                    Text(stringResource(R.string.real_route_gap), color = MaterialTheme.colorScheme.error)
+                    TextButton(onClick = recorder::acknowledgeGap) { Text(stringResource(R.string.real_route_gap_acknowledge)) }
+                }
+                if (recorder.storageError) {
+                    Text(stringResource(R.string.real_route_draft_error), color = MaterialTheme.colorScheme.error)
+                    if (recorder.points.isNotEmpty()) TextButton(onClick = recorder::retryDraftSave) { Text(stringResource(R.string.real_route_draft_retry)) }
+                }
                 if (saveFailed) Text(stringResource(R.string.real_route_save_failed), color = MaterialTheme.colorScheme.error)
                 OutlinedTextField(value = name, onValueChange = { name = it }, singleLine = true, label = { Text(stringResource(R.string.real_route_name)) })
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     if (recorder.recording) {
                         OutlinedButton(onClick = recorder::pause) { Text(stringResource(R.string.real_route_pause)) }
                     } else {
-                        OutlinedButton(enabled = !spoofing && !saving, onClick = { permission.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)) }) {
+                        OutlinedButton(enabled = !spoofing && !saving && !recorder.atLimit, onClick = { permission.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)) }) {
                             Text(stringResource(if (recorder.points.isEmpty()) R.string.real_route_start else R.string.real_route_resume))
                         }
                     }
@@ -81,6 +93,6 @@ internal fun RealRouteRecordingDialog(viewModel: MainViewModel, spoofing: Boolea
         title = { Text(stringResource(R.string.real_route_discard_title)) },
         text = { Text(stringResource(R.string.real_route_discard_message)) },
         confirmButton = { TextButton(onClick = { recorder.clear(); confirmDiscard = false; onDismiss() }) { Text(stringResource(R.string.real_route_discard)) } },
-        dismissButton = { TextButton(onClick = { confirmDiscard = false }) { Text(stringResource(R.string.real_route_keep)) } }
+        dismissButton = { TextButton(enabled = !recorder.draftPending && !recorder.storageError, onClick = { recorder.pause(); confirmDiscard = false; onDismiss() }) { Text(stringResource(R.string.real_route_keep)) } }
     )
 }

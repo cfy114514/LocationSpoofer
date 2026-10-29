@@ -179,4 +179,25 @@ class RouteEngineTest {
         val legacy = (0..600 step 10).map { RouteEngine.realisticAltitude(cfg(null), now = 1_000_000L + it * 1000L) }
         assertTrue(legacy.all { it in 77.0..83.0 })
     }
+    @Test
+    fun `lateral session seed persists across resumed segments`() {
+        val points = pointsJson(30.0 to 120.0, 30.02 to 120.0)
+        val initial = JSONObject().apply {
+            put("is_route_mode", true)
+            put("route_points", points)
+            put("speed_m_s", 2.0)
+            put("start_timestamp", 1000L)
+            put("route_lateral_deviation", true)
+            put("route_lateral_seed", 1000L)
+        }
+        val before = RouteEngine.calculateCurrentPosition(initial, 51000L)
+        val resumed = JSONObject(initial.toString()).apply {
+            put("start_timestamp", 51000L)
+            put("route_distance_offset", 100.0)
+        }
+        val after = RouteEngine.calculateCurrentPosition(resumed, 51000L)
+        assertEquals(before.lat, after.lat, 1e-10)
+        assertEquals(before.lng, after.lng, 1e-10)
+        assertEquals(before.bearing.toDouble(), after.bearing.toDouble(), 1e-6)
+    }
 }

@@ -188,7 +188,7 @@ internal fun LocationHooker.hookLocationProviders(classLoader: ClassLoader, curr
                                 try {
                                     XposedHelpers.hookAllMethods(listenerClazz, "onLocationChanged") { lChain, _ ->
                                         val config = readConfig()
-                                        if (config != null && config.optBoolean("active", false) && currentPkg.substringBefore(":") != "com.vincenthzr.locationspoofer") {
+                                        if (config != null && config.optBoolean("active", false) && currentPkg.substringBefore(":") !in setOf("com.vincenthzr.locationspoofer", "com.vincenthzr.locationspoofer.cfytest")) {
                                             if (lChain.args.isNotEmpty()) {
                                                 val firstArg = lChain.args[0]
                                                 if (firstArg != null) {
@@ -299,7 +299,7 @@ internal fun LocationHooker.hookLocationProviders(classLoader: ClassLoader, curr
                 "getCurrentLocation"
             ) { chain, method ->
                 val config = readConfig()
-                if (config != null && config.optBoolean("active", false) && currentPkg.substringBefore(":") != "com.vincenthzr.locationspoofer") {
+                if (config != null && config.optBoolean("active", false) && currentPkg.substringBefore(":") !in setOf("com.vincenthzr.locationspoofer", "com.vincenthzr.locationspoofer.cfytest")) {
                     val provider = chain.args.getOrNull(0) as? String ?: "gps"
                     val defaultSys = when (provider.lowercase()) {
                         "baidu" -> "BD-09"
@@ -374,7 +374,7 @@ internal fun LocationHooker.hookLocationProviders(classLoader: ClassLoader, curr
                 // 宿主 App 自身需要获取真实位置（"定位到当前位置"功能）
                 // 不拦截宿主 App 的 getLastKnownLocation，只拦截目标 App 的
                 val hostPkg = currentPkg.substringBefore(":")
-                if (hostPkg == "com.vincenthzr.locationspoofer") return@hookAllMethods result
+                if (hostPkg in setOf("com.vincenthzr.locationspoofer", "com.vincenthzr.locationspoofer.cfytest")) return@hookAllMethods result
 
                 val config = readConfig()
                 if (config == null || !config.optBoolean(
@@ -433,7 +433,7 @@ internal fun LocationHooker.hookLocationProviders(classLoader: ClassLoader, curr
             val lmClazz = XposedHelpers.findClass("android.location.LocationManager", classLoader)
             XposedHelpers.hookAllMethods(lmClazz, "isLocationEnabled") { chain, _ ->
                 val config = readConfig()
-                if (config != null && config.optBoolean("active", false) && currentPkg.substringBefore(":") != "com.vincenthzr.locationspoofer") {
+                if (config != null && config.optBoolean("active", false) && currentPkg.substringBefore(":") !in setOf("com.vincenthzr.locationspoofer", "com.vincenthzr.locationspoofer.cfytest")) {
                     return@hookAllMethods true
                 }
                 return@hookAllMethods chain.proceed(chain.args.toTypedArray())
@@ -441,7 +441,7 @@ internal fun LocationHooker.hookLocationProviders(classLoader: ClassLoader, curr
 
             XposedHelpers.hookAllMethods(lmClazz, "isProviderEnabled") { chain, _ ->
                 val config = readConfig()
-                if (config != null && config.optBoolean("active", false) && currentPkg.substringBefore(":") != "com.vincenthzr.locationspoofer") {
+                if (config != null && config.optBoolean("active", false) && currentPkg.substringBefore(":") !in setOf("com.vincenthzr.locationspoofer", "com.vincenthzr.locationspoofer.cfytest")) {
                     return@hookAllMethods true
                 }
                 return@hookAllMethods chain.proceed(chain.args.toTypedArray())
@@ -449,7 +449,7 @@ internal fun LocationHooker.hookLocationProviders(classLoader: ClassLoader, curr
 
             XposedHelpers.hookAllMethods(lmClazz, "getAllProviders") { chain, _ ->
                 val config = readConfig()
-                if (config != null && config.optBoolean("active", false) && currentPkg.substringBefore(":") != "com.vincenthzr.locationspoofer") {
+                if (config != null && config.optBoolean("active", false) && currentPkg.substringBefore(":") !in setOf("com.vincenthzr.locationspoofer", "com.vincenthzr.locationspoofer.cfytest")) {
                     return@hookAllMethods listOf("gps", "network", "passive")
                 }
                 return@hookAllMethods chain.proceed(chain.args.toTypedArray())
@@ -457,7 +457,7 @@ internal fun LocationHooker.hookLocationProviders(classLoader: ClassLoader, curr
 
             XposedHelpers.hookAllMethods(lmClazz, "getProviders") { chain, _ ->
                 val config = readConfig()
-                if (config != null && config.optBoolean("active", false) && currentPkg.substringBefore(":") != "com.vincenthzr.locationspoofer") {
+                if (config != null && config.optBoolean("active", false) && currentPkg.substringBefore(":") !in setOf("com.vincenthzr.locationspoofer", "com.vincenthzr.locationspoofer.cfytest")) {
                     return@hookAllMethods listOf("gps", "network", "passive")
                 }
                 return@hookAllMethods chain.proceed(chain.args.toTypedArray())

@@ -5,7 +5,7 @@ import com.vincenthzr.locationspoofer.data.model.RootSolution
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-class RootManager {
+class RootManager(private val ownPackageName: String = "com.vincenthzr.locationspoofer") {
 
     companion object {
         private const val TAG = "LocationSpoofer"
@@ -18,7 +18,7 @@ class RootManager {
             hasRoot
         }
 
-    suspend fun applyRootBackgroundExemptions(packageName: String = "com.vincenthzr.locationspoofer"): Boolean =
+    suspend fun applyRootBackgroundExemptions(packageName: String = ownPackageName): Boolean =
         withContext(Dispatchers.IO) {
             val cmds = """
                 dumpsys deviceidle whitelist +$packageName 2>/dev/null || true
@@ -70,13 +70,13 @@ class RootManager {
 
     suspend fun grantMockLocation(): Boolean = withContext(Dispatchers.IO) {
         val result =
-            executeCommand("appops set com.vincenthzr.locationspoofer android:mock_location allow")
+            executeCommand("appops set $ownPackageName android:mock_location allow")
         result != "ERROR"
     }
 
     suspend fun revokeMockLocation(): Boolean = withContext(Dispatchers.IO) {
         val result =
-            executeCommand("appops set com.vincenthzr.locationspoofer android:mock_location default")
+            executeCommand("appops set $ownPackageName android:mock_location default")
         result != "ERROR"
     }
 

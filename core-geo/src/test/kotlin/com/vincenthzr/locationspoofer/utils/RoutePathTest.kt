@@ -46,4 +46,28 @@ class RoutePathTest {
         assertEquals(b.lat, end.lat, 1e-9)
         assertEquals(b.lng, end.lng, 1e-9)
     }
+    @Test
+    fun `lateral deviation is deterministic bounded and reaches exact endpoints`() {
+        val path = RoutePath(listOf(a, b))
+        val initial = path.positionWithLateralDeviation(0.0, true, 1234)
+        assertTrue(GeoMath.distance(a, LatLng(initial.lat, initial.lng)) < 0.001)
+        for (meters in 1..999) {
+            val center = path.positionAt(meters.toDouble(), true)
+            val shifted = path.positionWithLateralDeviation(meters.toDouble(), true, 1234)
+            assertTrue(GeoMath.distance(LatLng(center.lat, center.lng), LatLng(shifted.lat, shifted.lng)) <= 1.801)
+            assertEquals(shifted, path.positionWithLateralDeviation(meters.toDouble(), true, 1234))
+        }
+        assertEquals(path.positionAt(2000.0, true), path.positionWithLateralDeviation(2000.0, true, 1234))
+    }
+
+    @Test
+    fun `deviation stays continuous at a bend and reversal`() {
+        val corner = GeoMath.destination(b, 0.0, 1000.0)
+        val path = RoutePath(listOf(a, b, corner))
+        for (boundary in listOf(1000.0, path.totalDistance)) {
+            val before = path.positionWithLateralDeviation(boundary - 0.001, false, 1234)
+            val after = path.positionWithLateralDeviation(boundary + 0.001, false, 1234)
+            assertTrue(GeoMath.distance(LatLng(before.lat, before.lng), LatLng(after.lat, after.lng)) < 0.05)
+        }
+    }
 }

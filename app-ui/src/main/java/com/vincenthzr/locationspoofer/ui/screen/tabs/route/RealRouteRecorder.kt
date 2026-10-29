@@ -13,6 +13,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.vincenthzr.locationspoofer.data.model.RoutePoint
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.util.concurrent.atomic.AtomicLong
 
 /** Foreground-only GPS recording. The caller owns and closes this listener. */
 internal class RealRouteRecorder(context: Context) : LocationListener {
@@ -20,13 +27,44 @@ internal class RealRouteRecorder(context: Context) : LocationListener {
     private val appContext = context.applicationContext
     var recording by mutableStateOf(false)
         private set
-    var points by mutableStateOf<List<RoutePoint>>(emptyList())
+    private val draft = RealRouteDraft(context.applicationContext)
+    private val writes = Channel<Pair<Long, List<RoutePoint>>>(Channel.CONFLATED)
+    private val revision = AtomicLong(0)
+    var draftPending by mutableStateOf(false)
+        private set
+    private val draftScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    var storageError by mutableStateOf(false)
+        private set
+    private var unreadableDraft = false
+    var points by mutableStateOf<List<RoutePoint>>(try { draft.load() } catch (_: Exception) { unreadableDraft = true; storageError = true; emptyList() })
         private set
     var error by mutableStateOf<String?>(null)
         private set
+    init {
+        draftScope.launch {
+            for ((version, snapshot) in writes) {
+                val failed = try { draft.save(snapshot); false } catch (_: Exception) { true }
+                withContext(Dispatchers.Main) {
+                    if (revision.get() == version) { storageError = failed; draftPending = false }
+                }
+            }
+        }
+    }
+    private fun persist() {
+        draftPending = true
+        writes.trySend(revision.incrementAndGet() to points)
+    }
+    fun retryDraftSave() { if (!unreadableDraft) persist() }
     private var last: Location? = null
+    var hasGap by mutableStateOf(false)
+        private set
+    val atLimit: Boolean get() = points.size >= MAX_POINTS
+    fun acknowledgeGap() { hasGap = false }
+
 
     fun start(): Boolean {
+        if (unreadableDraft) { storageError = true; return false }
+        if (atLimit) { error = "limit"; return false }
         if (ContextCompat.checkSelfPermission(appContext, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             error = "permission"
             return false
@@ -57,10 +95,10 @@ internal class RealRouteRecorder(context: Context) : LocationListener {
         last = null
     }
 
-    fun clear() { pause(); points = emptyList(); error = null }
+    fun clear() { pause(); points = emptyList(); error = null; hasGap = false; persist() }
 
     override fun onLocationChanged(location: Location) {
-        if (!recording || !location.hasAccuracy() || location.accuracy > 30f || location.accuracy <= 0f) return
+        if (!recording || !location.hasAccuracy() || !location.accuracy.isFinite() || location.accuracy > 35f || location.accuracy <= 0f) return
         if (location.latitude !in -90.0..90.0 || location.longitude !in -180.0..180.0) return
         if (android.os.Build.VERSION.SDK_INT >= 31 && location.isMock) return
         @Suppress("DEPRECATION")
@@ -70,14 +108,18 @@ internal class RealRouteRecorder(context: Context) : LocationListener {
         val previous = last
         if (previous != null) {
             val dt = (location.elapsedRealtimeNanos - previous.elapsedRealtimeNanos) / 1_000_000_000.0
-            if (dt <= 0) return
-            val distance = previous.distanceTo(location)
-            if (distance < maxOf(3f, location.accuracy / 2f)) return
-            if (distance / dt > 100) return
+            when (evaluateGpsSample(location.accuracy, previous.distanceTo(location), dt)) {
+                GpsSampleDecision.REJECT -> return
+                GpsSampleDecision.GAP -> hasGap = true
+                GpsSampleDecision.ACCEPT -> Unit
+            }
         }
         last = Location(location)
         points = points + realGpsRoutePoint(location.latitude, location.longitude)
+        persist()
+        if (atLimit) { pause(); error = "limit" }
     }
+    companion object { const val MAX_POINTS = 10_000 }
     override fun onProviderDisabled(provider: String) {
         if (provider == LocationManager.GPS_PROVIDER && recording) { pause(); error = "gps" }
     }

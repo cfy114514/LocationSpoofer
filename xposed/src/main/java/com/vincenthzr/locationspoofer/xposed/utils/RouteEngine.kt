@@ -79,7 +79,10 @@ object RouteEngine {
         val offset = config.optDouble("route_distance_offset", 0.0).coerceAtLeast(0.0)
         val traveled = offset + realism.distance(speed, elapsedSec)
 
-        val pos = path.positionAt(traveled, config.optBoolean("stop_at_destination", false))
+        val stop = config.optBoolean("stop_at_destination", false)
+        val pos = if (config.optBoolean("route_lateral_deviation", false))
+            path.positionWithLateralDeviation(traveled, stop, config.optLong("route_lateral_seed", startTime))
+        else path.positionAt(traveled, stop)
         val currentSpeed = if (pos.arrived) 0f else realism.speed(speed, elapsedSec).toFloat()
         return SpoofedMotion(pos.lat, pos.lng, pos.bearing, currentSpeed)
     }

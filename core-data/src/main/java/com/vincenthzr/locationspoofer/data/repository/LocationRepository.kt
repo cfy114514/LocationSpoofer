@@ -94,7 +94,8 @@ class LocationRepository(
         stopAtDestination: Boolean = false,
         enableStepSimulation: Boolean = true,
         stepCadenceSpm: Int = 165,
-        isAutoCadence: Boolean = true
+        isAutoCadence: Boolean = true,
+        routeLateralDeviation: Boolean = false
     ) {
         SpoofingState.isActive = true
         SpoofingState.latitude = lat
@@ -143,7 +144,8 @@ class LocationRepository(
             stopAtDestination,
             enableStepSimulation,
             stepCadenceSpm,
-            isAutoCadence
+            isAutoCadence,
+            routeLateralDeviation
         )
 
         spoofingServiceController.startForeground(context, lat, lng)
@@ -162,7 +164,8 @@ class LocationRepository(
 
         // 1. 同步在当前进程清理所有可能残留的 TestProvider
         val lm = context.getSystemService(Context.LOCATION_SERVICE) as? LocationManager
-        if (lm != null) {
+        // The coexist build must never remove system providers left by another installation.
+        if (lm != null && context.packageName == "com.vincenthzr.locationspoofer") {
             try {
                 lm.setTestProviderEnabled(LocationManager.GPS_PROVIDER, false)
             } catch (e: Throwable) {

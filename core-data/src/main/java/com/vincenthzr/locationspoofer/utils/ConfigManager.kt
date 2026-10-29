@@ -61,7 +61,8 @@ class ConfigManager(private val context: Context, private val rootManager: RootM
         stopAtDestination: Boolean = false,
         enableStepSimulation: Boolean = true,
         stepCadenceSpm: Int = 165,
-        isAutoCadence: Boolean = true
+        isAutoCadence: Boolean = true,
+        routeLateralDeviation: Boolean = false
     ): Boolean = withContext(Dispatchers.IO) {
         val routeArray = JSONArray()
         routePoints.forEach { p ->
@@ -80,6 +81,8 @@ class ConfigManager(private val context: Context, private val rootManager: RootM
             put("speed_m_s", speedMs)
             put("start_timestamp", startTimestamp)
             put("route_points", routeArray)
+            put("route_lateral_deviation", routeLateralDeviation)
+            put("route_lateral_seed", startTimestamp)
             put("is_route_mode", isRouteMode)
             put("stop_at_destination", stopAtDestination)
             putEnvironment(this, wifiJson, cellJson, bluetoothJson)
@@ -288,7 +291,7 @@ class ConfigManager(private val context: Context, private val rootManager: RootM
             publicationPending = false
             // Migration runs only after the replacement channel accepted a complete snapshot.
             val now = System.currentTimeMillis()
-            if (!transportPrefs.getBoolean("legacy_files_removed", false) && now >= nextCleanupAttemptAt) {
+            if (context.packageName == "com.vincenthzr.locationspoofer" && !transportPrefs.getBoolean("legacy_files_removed", false) && now >= nextCleanupAttemptAt) {
                 nextCleanupAttemptAt = now + 60_000
                 // Root authorization/cleanup must not delay subsequent stop or coordinate updates.
                 scope.launch {

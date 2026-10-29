@@ -167,6 +167,10 @@ internal fun MainViewModel.setUseRealRoute(use: Boolean) {
     _uiState.update { it.copy(useRealRoute = use) }
 }
 
+internal fun MainViewModel.setRouteLateralDeviation(enabled: Boolean) {
+    _uiState.update { it.copy(routeLateralDeviation = enabled) }
+}
+
 internal fun MainViewModel.setStopAtDestination(stop: Boolean) {
     _uiState.update { it.copy(stopAtDestination = stop) }
 }
@@ -355,11 +359,13 @@ private fun MainViewModel.startSimulationWithPoints(pointsToRun: List<RoutePoint
             stopAtDestination = _uiState.value.stopAtDestination,
             enableStepSimulation = _uiState.value.enableStepSimulation,
             stepCadenceSpm = _uiState.value.stepCadenceSpm,
-            isAutoCadence = _uiState.value.isAutoCadence
+            isAutoCadence = _uiState.value.isAutoCadence,
+            routeLateralDeviation = state.routeLateralDeviation
         )
         val preset = MotionController.SpeedPreset(_uiState.value.routeSimMode.name, joystickMaxSpeedMs().toDouble())
         // 手动模式同样加载路线，只是以暂停状态开始、由悬浮摇杆控制，点"开始"后沿路线前进
-        motionController.onRouteStarted(pointsToRun, preset, _uiState.value.stopAtDestination, now, startPaused = !isLoop)
+        motionController.onRouteStarted(pointsToRun, preset, _uiState.value.stopAtDestination, now,
+            startPaused = !isLoop, lateralDeviation = state.routeLateralDeviation)
         // 悬浮摇杆只在手动模式下出现；停止模拟后它会随 MotionController 结束会话自行关闭
         if (!isLoop) locationRepository.setFloatingJoystickVisible(context, true)
         _uiState.update {

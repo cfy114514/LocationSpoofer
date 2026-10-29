@@ -698,7 +698,7 @@ class LocationHooker : XposedModule() {
                                     lastSpoofedLng = motion.lng
 
                                     val basePkg = currentPackageName.substringBefore(":")
-                                    if (basePkg == "com.vincenthzr.locationspoofer") {
+                                    if (basePkg in setOf("com.vincenthzr.locationspoofer", "com.vincenthzr.locationspoofer.cfytest")) {
                                         continue
                                     }
 

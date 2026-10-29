@@ -101,6 +101,8 @@ class MotionController(
     private var stopAtDestination = false
     private var routeStartTs = 0L
     private var routeOffset = 0.0
+    private var lateralDeviation = false
+    private var lateralSeed = 0L
     private var pausePoint: LatLng? = null
     private var pauseDistance = 0.0
 
@@ -152,12 +154,15 @@ class MotionController(
         preset: SpeedPreset,
         stopAtDestination: Boolean,
         startTimestamp: Long,
-        startPaused: Boolean = false
+        startPaused: Boolean = false,
+        lateralDeviation: Boolean = false
     ) {
         val routePath = RoutePath(points.map { LatLng(it.lat, it.lng) })
         if (!routePath.isValid) return
         path = routePath
         this.stopAtDestination = stopAtDestination
+        this.lateralDeviation = lateralDeviation
+        lateralSeed = startTimestamp
         routeStartTs = startTimestamp
         routeOffset = 0.0
         joyIntensity = 0f
@@ -224,7 +229,7 @@ class MotionController(
         if (s.mode != Mode.ROUTE) return
         val now = clock()
         val traveled = traveledAt(now)
-        val pos = routePath.positionAt(traveled, stopAtDestination)
+        val pos = routePosition(routePath, traveled)
         pauseDistance = traveled
         pausePoint = LatLng(pos.lat, pos.lng)
         joyIntensity = 0f
@@ -306,6 +311,10 @@ class MotionController(
     }
 
     /** 与 Xposed 端 RouteEngine 同一公式：偏移 + 从本段开始时刻起按（带浮动的）速度行进的距离 */
+    private fun routePosition(path: RoutePath, distance: Double): RoutePath.Position =
+        if (lateralDeviation) path.positionWithLateralDeviation(distance, stopAtDestination, lateralSeed)
+        else path.positionAt(distance, stopAtDestination)
+
     private fun traveledAt(now: Long): Double {
         val elapsed = (now - routeStartTs).coerceAtLeast(0L) / 1000.0
         return routeOffset + realism(routeStartTs).distance(_state.value.preset.speedMs, elapsed)
@@ -330,7 +339,7 @@ class MotionController(
             s.mode == Mode.ROUTE -> {
                 val routePath = path ?: return
                 val elapsed = (now - routeStartTs).coerceAtLeast(0L) / 1000.0
-                val pos = routePath.positionAt(traveledAt(now), stopAtDestination)
+                val pos = routePosition(routePath, traveledAt(now))
                 val speed = if (pos.arrived) 0.0 else realism(routeStartTs).speed(s.preset.speedMs, elapsed)
                 _state.update { it.copy(lat = pos.lat, lng = pos.lng, bearing = pos.bearing, speedMs = speed) }
             }

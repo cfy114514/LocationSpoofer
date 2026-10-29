@@ -638,7 +638,7 @@
     <string name="collection_route_delete_message">删除“%1$s”及其全部采样数据？</string>
     <string name="local_collection_records_count">%1$d 个点位 · %2$d 条路线</string>
     <string name="real_route_title">录制真实路线</string>
-    <string name="real_route_foreground_hint">录制时请保持此页面打开；应用进入后台会自动暂停。暂停前后的点会以直线连接。关闭前请保存。</string>
+    <string name="real_route_foreground_hint">录制时请保持此页面打开；应用进入后台会自动暂停。暂停前后的点会以直线连接。草稿保存在本机，可关闭后继续。</string>
     <string name="real_route_stop_spoof">请先停止位置模拟。</string>
     <string name="real_route_points">已记录 %1$d 个点</string>
     <string name="real_route_gps_error">请开启 GPS。</string>
@@ -657,4 +657,11 @@
     <string name="osm_standard_only">OpenStreetMap 仅提供普通地图。</string>
     <string name="barometer_simulation">模拟气压计</string>
     <string name="barometer_simulation_desc">模拟期间根据模拟海拔计算气压，需要设备有气压计。</string>
+    <string name="route_lateral_deviation">平滑路线偏移</string>
+    <string name="route_lateral_deviation_desc">沿路线左右缓慢偏移，范围不超过 1.8 米；下次运行时生效。</string>
+    <string name="real_route_limit">已达到 10000 个点，录制已停止。请保存或放弃。</string>
+    <string name="real_route_gap">GPS 信号出现中断，中断前后的点将以直线连接。</string>
+    <string name="real_route_gap_acknowledge">知道了</string>
+    <string name="real_route_draft_error">无法保存或读取本地草稿。请保持页面打开并保存路线。</string>
+    <string name="real_route_draft_retry">重试保存草稿</string>
 </resources>

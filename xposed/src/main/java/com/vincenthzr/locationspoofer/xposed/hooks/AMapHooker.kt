@@ -69,7 +69,7 @@ internal fun LocationHooker.hookAMapSDK(classLoader: ClassLoader) {
             // 2. Getter 方法级拦截
             XposedHelpers.hookAllMethods(amapLocClazz, "getLatitude") { chain, _ ->
                 var result = chain.proceed(chain.args.toTypedArray())
-                if (currentPackageName.substringBefore(":") == "com.vincenthzr.locationspoofer") return@hookAllMethods result
+                if (currentPackageName.substringBefore(":") in setOf("com.vincenthzr.locationspoofer", "com.vincenthzr.locationspoofer.cfytest")) return@hookAllMethods result
                 val motion = getCurrentSpoofedMotion("GCJ-02")
                 if (motion != null) {
                     result = motion.lat
@@ -79,7 +79,7 @@ internal fun LocationHooker.hookAMapSDK(classLoader: ClassLoader) {
 
             XposedHelpers.hookAllMethods(amapLocClazz, "getLongitude") { chain, _ ->
                 var result = chain.proceed(chain.args.toTypedArray())
-                if (currentPackageName.substringBefore(":") == "com.vincenthzr.locationspoofer") return@hookAllMethods result
+                if (currentPackageName.substringBefore(":") in setOf("com.vincenthzr.locationspoofer", "com.vincenthzr.locationspoofer.cfytest")) return@hookAllMethods result
                 val motion = getCurrentSpoofedMotion("GCJ-02")
                 if (motion != null) {
                     result = motion.lng
@@ -89,7 +89,7 @@ internal fun LocationHooker.hookAMapSDK(classLoader: ClassLoader) {
 
             XposedHelpers.hookAllMethods(amapLocClazz, "getAccuracy") { chain, _ ->
                 var result = chain.proceed(chain.args.toTypedArray())
-                if (currentPackageName.substringBefore(":") == "com.vincenthzr.locationspoofer") return@hookAllMethods result
+                if (currentPackageName.substringBefore(":") in setOf("com.vincenthzr.locationspoofer", "com.vincenthzr.locationspoofer.cfytest")) return@hookAllMethods result
                 val config = readConfig()
                 if (config != null && config.optBoolean("active", false)) {
                     result = getJitteredAccuracy()
@@ -99,7 +99,7 @@ internal fun LocationHooker.hookAMapSDK(classLoader: ClassLoader) {
 
             XposedHelpers.hookAllMethods(amapLocClazz, "getSpeed") { chain, _ ->
                 var result = chain.proceed(chain.args.toTypedArray())
-                if (currentPackageName.substringBefore(":") == "com.vincenthzr.locationspoofer") return@hookAllMethods result
+                if (currentPackageName.substringBefore(":") in setOf("com.vincenthzr.locationspoofer", "com.vincenthzr.locationspoofer.cfytest")) return@hookAllMethods result
                 val motion = getCurrentSpoofedMotion("GCJ-02")
                 if (motion != null) {
                     result = motion.speed
@@ -109,7 +109,7 @@ internal fun LocationHooker.hookAMapSDK(classLoader: ClassLoader) {
 
             XposedHelpers.hookAllMethods(amapLocClazz, "getBearing") { chain, _ ->
                 var result = chain.proceed(chain.args.toTypedArray())
-                if (currentPackageName.substringBefore(":") == "com.vincenthzr.locationspoofer") return@hookAllMethods result
+                if (currentPackageName.substringBefore(":") in setOf("com.vincenthzr.locationspoofer", "com.vincenthzr.locationspoofer.cfytest")) return@hookAllMethods result
                 val motion = getCurrentSpoofedMotion("GCJ-02")
                 if (motion != null) {
                     result = motion.bearing
