@@ -15,6 +15,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.vincenthzr.locationspoofer.data.model.RoutePoint
 import com.vincenthzr.locationspoofer.data.state.SpoofingState
+import com.vincenthzr.locationspoofer.data.state.recordingSimulationCoordinator
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -197,7 +198,12 @@ internal class RealRouteRecorder private constructor(context: Context) : Locatio
         const val MAX_POINTS = 10_000
         @Volatile private var instance: RealRouteRecorder? = null
         fun getInstance(context: Context): RealRouteRecorder = instance ?: synchronized(this) {
-            instance ?: RealRouteRecorder(context.applicationContext).also { instance = it }
+            instance ?: RealRouteRecorder(context.applicationContext).also { recorder ->
+                recordingSimulationCoordinator.register {
+                    withContext(Dispatchers.Main.immediate) { recorder.pauseForSimulation() }
+                }
+                instance = recorder
+            }
         }
     }
     override fun onProviderDisabled(provider: String) {

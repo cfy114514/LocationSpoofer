@@ -9,6 +9,7 @@ import com.vincenthzr.locationspoofer.data.model.RootSetupTestResult
 import com.vincenthzr.locationspoofer.data.model.RootSolution
 import com.vincenthzr.locationspoofer.data.model.RoutePoint
 import com.vincenthzr.locationspoofer.data.state.SpoofingState
+import com.vincenthzr.locationspoofer.data.state.recordingSimulationCoordinator
 import com.vincenthzr.locationspoofer.utils.ConfigManager
 import com.vincenthzr.locationspoofer.utils.LSPosedManager
 import com.vincenthzr.locationspoofer.utils.RootManager
@@ -97,7 +98,15 @@ class LocationRepository(
         isAutoCadence: Boolean = true,
         routeLateralDeviation: Boolean = false
     ) {
+        // Mark the transition first so a recorder cannot start while its stop is dispatched.
+        val wasActive = SpoofingState.isActive
         SpoofingState.isActive = true
+        try {
+            recordingSimulationCoordinator.beforeSimulation()
+        } catch (error: Throwable) {
+            SpoofingState.isActive = wasActive
+            throw error
+        }
         SpoofingState.latitude = lat
         SpoofingState.longitude = lng
         SpoofingState.startTimestamp = startTime

@@ -14,6 +14,8 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.rule.GrantPermissionRule
 import com.vincenthzr.locationspoofer.data.model.RoutePoint
+import com.vincenthzr.locationspoofer.data.state.recordingSimulationCoordinator
+import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.*
 import org.junit.Before
@@ -90,8 +92,8 @@ class RealRouteAndroidTest {
             }
             await("service did not resume recording") { recorder.recording && serviceRunning() }
             SystemClock.sleep(250)
-            instrumentation.runOnMainSync { recorder.pause() }
-            await("service did not stop after second pause") { !recorder.recording && !serviceRunning() }
+            runBlocking { recordingSimulationCoordinator.beforeSimulation() }
+            await("coordinator did not stop recording") { !recorder.recording && !serviceRunning() }
             instrumentation.runOnMainSync {
                 assertTrue("resumed time was not counted", recorder.statistics.elapsed(SystemClock.elapsedRealtime()) >= pausedElapsed + 200)
             }

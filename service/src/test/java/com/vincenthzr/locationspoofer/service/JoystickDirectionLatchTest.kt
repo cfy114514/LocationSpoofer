@@ -35,4 +35,21 @@ class JoystickDirectionLatchTest {
         latch.reset()
         assertFalse(latch.ready(9000))
     }
+    @Test fun oneGestureCanRelockAfterReturningToCenter() {
+        val latch = JoystickGestureLatch()
+        latch.update(0.0, 1f, 0)
+        assertFalse(latch.tick(1499))
+        assertTrue(latch.tick(1500))
+        assertTrue(latch.locked)
+        assertFalse(latch.tick(1550))
+        latch.update(0.0, 0f, 1600)
+        assertFalse(latch.locked)
+        latch.update(90.0, 0.8f, 1650)
+        assertFalse(latch.tick(3149))
+        assertTrue(latch.tick(3150))
+        assertTrue(latch.locked)
+        latch.reset()
+        assertFalse(latch.locked)
+        assertFalse(latch.tick(5000))
+    }
 }

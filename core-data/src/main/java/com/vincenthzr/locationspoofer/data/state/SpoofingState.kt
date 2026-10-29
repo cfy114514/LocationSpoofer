@@ -9,7 +9,7 @@ package com.vincenthzr.locationspoofer.data.state
  * 查询到实时坐标/周边无线环境数据的暴露面。
  */
 object SpoofingState {
-    var isActive = false
+    @Volatile var isActive = false
     var latitude = 0.0      // GCJ-02（高德坐标系，存入即为GCJ-02）
     var longitude = 0.0     // GCJ-02
     var wifiJson = "[]"

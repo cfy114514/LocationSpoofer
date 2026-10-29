@@ -364,6 +364,7 @@ private fun Joystick(enabled: Boolean, palette: Palette, thumb: Offset, onThumb:
     var lockJob by remember { mutableStateOf<Job?>(null) }
     val currentLocked by rememberUpdatedState(locked)
     DisposableEffect(Unit) { onDispose { lockJob?.cancel() } }
+    LaunchedEffect(enabled) { if (!enabled) lockJob?.cancel() }
 
     Box(
         modifier = Modifier
@@ -375,29 +376,25 @@ private fun Joystick(enabled: Boolean, palette: Palette, thumb: Offset, onThumb:
             .pointerInput(enabled) {
                 if (!enabled) return@pointerInput
                 var dragOffset = Offset.Zero
-                var gestureLocked = false
-                val latch = JoystickDirectionLatch()
+                val latch = JoystickGestureLatch()
                 detectDragGestures(
                     onDragStart = {
                         if (currentLocked) onUnlock()
                         dragOffset = Offset.Zero
-                        gestureLocked = false
                         lockJob?.cancel()
                         latch.reset()
                         lockJob = scope.launch {
-                            while (!gestureLocked) {
+                            while (true) {
                                 delay(50)
-                                if (latch.ready(SystemClock.elapsedRealtime())) {
-                                    gestureLocked = true
-                                    onLocked(true)
-                                }
+                                if (latch.tick(SystemClock.elapsedRealtime())) onLocked(true)
                             }
                         }
                     },
                     onDragEnd = {
                         lockJob?.cancel()
+                        val wasLocked = latch.locked
                         latch.reset()
-                        if (!gestureLocked) onUnlock()
+                        if (!wasLocked) onUnlock()
                     },
                     onDragCancel = {
                         lockJob?.cancel()
@@ -411,14 +408,12 @@ private fun Joystick(enabled: Boolean, palette: Palette, thumb: Offset, onThumb:
                     val next = if (dist <= maxRadiusPx) raw else raw * (maxRadiusPx / dist)
                     dragOffset = next
                     onThumb(next)
-                    if (next == Offset.Zero && gestureLocked) {
-                        gestureLocked = false
-                        onLocked(false)
-                    }
                     val angle = atan2(next.y.toDouble(), next.x.toDouble())
                     val intensity = (sqrt(next.x * next.x + next.y * next.y) / maxRadiusPx).coerceIn(0f, 1f)
                     val direction = (Math.toDegrees(angle) + 90 + 360) % 360
-                    if (!gestureLocked) latch.update(direction, intensity, SystemClock.elapsedRealtime())
+                    val wasLocked = latch.locked
+                    latch.update(direction, intensity, SystemClock.elapsedRealtime())
+                    if (wasLocked && !latch.locked) onLocked(false)
                     onJoystick(direction, intensity)
                 }
             },

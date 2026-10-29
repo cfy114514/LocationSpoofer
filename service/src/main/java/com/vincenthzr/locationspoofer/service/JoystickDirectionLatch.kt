@@ -26,3 +26,26 @@ internal class JoystickDirectionLatch {
         return now - start >= 1_500
     }
 }
+
+/** One drag may lock, return to center, then lock again without lifting the finger. */
+internal class JoystickGestureLatch {
+    private val direction = JoystickDirectionLatch()
+    var locked = false
+        private set
+
+    fun update(bearing: Double, intensity: Float, now: Long) {
+        if (locked && intensity == 0f) {
+            locked = false
+            direction.reset()
+        }
+        if (!locked) direction.update(bearing, intensity, now)
+    }
+
+    fun tick(now: Long): Boolean {
+        if (locked || !direction.ready(now)) return false
+        locked = true
+        return true
+    }
+
+    fun reset() { locked = false; direction.reset() }
+}

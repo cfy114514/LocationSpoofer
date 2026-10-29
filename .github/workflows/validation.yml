@@ -26,6 +26,7 @@ jobs:
           name: scoped-coexist-apks
           path: app/build/outputs/apk/scoped/coexist/*.apk
           if-no-files-found: error
+      - run: ./gradlew --no-daemon :app:assembleGlobalDebug
       - run: ./gradlew --no-daemon :app-ui:assembleScopedDebugAndroidTest
       - uses: actions/upload-artifact@v4
         with:
