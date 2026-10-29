@@ -19,9 +19,16 @@ jobs:
         with:
           packages: platform-tools
       - run: chmod +x gradlew
-      - run: ./gradlew --no-daemon :app:assembleScopedCoexist :core-geo:test :xposed:test :app-ui:testScopedDebugUnitTest
+      - run: ./gradlew --no-daemon :app:assembleScopedCoexist
       - uses: actions/upload-artifact@v4
         with:
           name: scoped-coexist-apks
           path: app/build/outputs/apk/scoped/coexist/*.apk
           if-no-files-found: error
+      - run: ./gradlew --no-daemon :core-geo:test :xposed:test :app-ui:testScopedDebugUnitTest
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports
+          path: '**/build/reports/tests/'
+          if-no-files-found: ignore
