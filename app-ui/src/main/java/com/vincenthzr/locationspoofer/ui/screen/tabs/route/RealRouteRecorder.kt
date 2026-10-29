@@ -32,6 +32,8 @@ internal class RealRouteRecorder private constructor(context: Context) : Locatio
         private set
     var starting by mutableStateOf(false)
         private set
+    // Service callbacks and recorder controls run on the main thread.
+    private var requestGeneration = 0L
     val statistics = RealRouteStatistics()
     private val draft = RealRouteDraft(context.applicationContext)
     private val writes = Channel<Pair<Long, RealRouteDraftData>>(Channel.CONFLATED)
@@ -100,8 +102,10 @@ internal class RealRouteRecorder private constructor(context: Context) : Locatio
         }
         if (recording || starting) return true
         return try {
+            val generation = ++requestGeneration
             starting = true
-            ContextCompat.startForegroundService(appContext, Intent(appContext, RealRouteRecordingService::class.java))
+            ContextCompat.startForegroundService(appContext, Intent(appContext, RealRouteRecordingService::class.java)
+                .putExtra(RealRouteRecordingService.EXTRA_GENERATION, generation))
             true
         } catch (_: RuntimeException) {
             starting = false
@@ -111,9 +115,12 @@ internal class RealRouteRecorder private constructor(context: Context) : Locatio
     }
 
     /** Called by the service only after it has entered the foreground. */
-    fun startGps(): Boolean {
+    fun isCurrentGeneration(generation: Long): Boolean = generation == requestGeneration
+    fun isCurrentStart(generation: Long): Boolean = isCurrentGeneration(generation) && starting
+
+    fun startGps(generation: Long): Boolean {
+        if (!isCurrentStart(generation)) return false
         if (SpoofingState.isActive) { starting = false; error = "spoofing"; return false }
-        if (!starting) return false
         return try {
             manager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1000L, 0f, this, Looper.getMainLooper())
             starting = false
@@ -128,8 +135,13 @@ internal class RealRouteRecorder private constructor(context: Context) : Locatio
         }
     }
 
-    fun serviceFailed() { starting = false; error = "service" }
-    fun serviceStopped() {
+    fun serviceFailed(generation: Long) {
+        if (isCurrentGeneration(generation)) { starting = false; error = "service" }
+    }
+    fun serviceStopped(generation: Long) {
+        if (isCurrentGeneration(generation)) resetRecordingState()
+    }
+    private fun resetRecordingState() {
         try { manager.removeUpdates(this) } catch (_: SecurityException) { }
         statistics.pause(SystemClock.elapsedRealtime())
         starting = false
@@ -137,7 +149,8 @@ internal class RealRouteRecorder private constructor(context: Context) : Locatio
         last = null
     }
     fun pause() {
-        serviceStopped()
+        ++requestGeneration
+        resetRecordingState()
         appContext.stopService(Intent(appContext, RealRouteRecordingService::class.java))
     }
 
@@ -191,7 +204,7 @@ internal class RealRouteRecorder private constructor(context: Context) : Locatio
         last = Location(location)
         points = points + realGpsRoutePoint(location.latitude, location.longitude)
         persist()
-        RealRouteRecordingService.update(appContext, points.size)
+        RealRouteRecordingService.update(appContext, points.size, requestGeneration)
         if (atLimit) stopWithReason("limit")
     }
     companion object {
