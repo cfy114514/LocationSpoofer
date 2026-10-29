@@ -2,6 +2,9 @@ package com.vincenthzr.locationspoofer.ui.components.map
 
 import android.graphics.Color
 import android.os.Bundle
+import android.os.SystemClock
+import android.view.MotionEvent
+import android.view.ViewConfiguration
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.fillMaxSize
@@ -77,6 +80,28 @@ class OsmMapAndroidTest {
                 assertTrue(mapMarker.position.latitude > wgsLat)
                 it.controller.clear()
                 assertEquals(0, it.map.overlays.size)
+
+                val interaction = it.map.parent as MapInteractionContainer
+                var drags = 0
+                it.controller.setOnUserDragListener { drags++ }
+                val slop = ViewConfiguration.get(it).scaledTouchSlop.toFloat()
+                val downTime = SystemClock.uptimeMillis()
+                fun touch(action: Int, x: Float, y: Float, gestureDown: Long, time: Long) {
+                    val event = MotionEvent.obtain(gestureDown, time, action, x, y, 0)
+                    try { interaction.dispatchTouchEvent(event) } finally { event.recycle() }
+                }
+                touch(MotionEvent.ACTION_DOWN, 30f, 30f, downTime, downTime)
+                touch(MotionEvent.ACTION_UP, 30f, 30f, downTime, downTime + 30)
+                assertEquals("a tap must not stop following", 0, drags)
+                val dragDown = downTime + 100
+                touch(MotionEvent.ACTION_DOWN, 30f, 30f, dragDown, dragDown)
+                touch(MotionEvent.ACTION_MOVE, 30f + slop * 0.5f, 30f, dragDown, dragDown + 10)
+                assertEquals("movement below touch slop must not notify", 0, drags)
+                touch(MotionEvent.ACTION_MOVE, 30f + slop + 5f, 30f, dragDown, dragDown + 20)
+                touch(MotionEvent.ACTION_MOVE, 30f + slop + 15f, 30f, dragDown, dragDown + 40)
+                touch(MotionEvent.ACTION_UP, 30f + slop + 15f, 30f, dragDown, dragDown + 60)
+                assertEquals("one drag must produce exactly one notification", 1, drags)
+                it.controller.setOnUserDragListener(null)
             }
             scenario.moveToState(Lifecycle.State.CREATED)
             scenario.moveToState(Lifecycle.State.RESUMED)
