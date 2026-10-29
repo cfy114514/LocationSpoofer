@@ -32,6 +32,12 @@ jobs:
           name: android-test-apks
           path: app-ui/build/outputs/apk/androidTest/**/*.apk
           if-no-files-found: error
+      - run: ./gradlew --no-daemon :service:assembleDebugAndroidTest
+      - uses: actions/upload-artifact@v4
+        with:
+          name: service-android-test-apks
+          path: service/build/outputs/apk/androidTest/**/*.apk
+          if-no-files-found: error
       - run: ./gradlew --no-daemon :core-geo:test :xposed:test :app-ui:testScopedDebugUnitTest :core-data:testScopedDebugUnitTest :service:testDebugUnitTest
       - if: always()
         uses: actions/upload-artifact@v4

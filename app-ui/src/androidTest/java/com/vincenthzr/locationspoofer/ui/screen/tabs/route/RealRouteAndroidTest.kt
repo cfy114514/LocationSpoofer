@@ -5,6 +5,7 @@ import android.app.Activity
 import android.app.ActivityManager
 import android.content.Context
 import android.content.ContextWrapper
+import android.location.Location
 import android.location.LocationManager
 import android.os.SystemClock
 import android.util.AtomicFile
@@ -13,8 +14,10 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.rule.GrantPermissionRule
+import androidx.test.filters.SdkSuppress
 import com.vincenthzr.locationspoofer.data.model.RoutePoint
 import com.vincenthzr.locationspoofer.data.state.recordingSimulationCoordinator
+import com.vincenthzr.locationspoofer.utils.CoordinateUtils
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.*
@@ -97,6 +100,101 @@ class RealRouteAndroidTest {
             instrumentation.runOnMainSync {
                 assertTrue("resumed time was not counted", recorder.statistics.elapsed(SystemClock.elapsedRealtime()) >= pausedElapsed + 200)
             }
+        }
+    }
+
+    @Test @SdkSuppress(minSdkVersion = 31)
+    fun syntheticCallbacksFilterConvertPersistAndResumeAfterGap() {
+        val manager = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
+        assertTrue("Enable GPS on the test emulator before running", manager.isProviderEnabled(LocationManager.GPS_PROVIDER))
+        val recorder = RealRouteRecorder.getInstance(context)
+        // Each Location below is synthetic and passed directly to the production callback.
+        // Nothing is installed as a system test provider or injected into GPS.
+        fun sample(lat: Double, lng: Double, ageMs: Long = 0, mock: Boolean = false) = Location(LocationManager.GPS_PROVIDER).apply {
+            latitude = lat
+            longitude = lng
+            accuracy = 5f
+            elapsedRealtimeNanos = SystemClock.elapsedRealtimeNanos() - ageMs * 1_000_000L
+            setMock(mock)
+        }
+        fun startWithoutFurtherSystemFixes() {
+            instrumentation.runOnMainSync { assertTrue("start rejected: ${recorder.error}", recorder.start()) }
+            await("recorder did not start") {
+                if (!recorder.recording) false else { manager.removeUpdates(recorder); true }
+            }
+        }
+
+        try {
+            instrumentation.runOnMainSync { recorder.clear() }
+            await("test draft could not be cleared") { !recorder.draftPending && !recorder.storageError }
+            ActivityScenario.launch(RecordingTestActivity::class.java).use {
+                startWithoutFurtherSystemFixes()
+                var baseline = 0
+                var firstLat = 0.0
+                var secondLat = 0.0
+                var longitude = 0.0
+                instrumentation.runOnMainSync {
+                    // If the emulator delivered a genuine fix before subscription removal,
+                    // continue near it instead of introducing an artificial intercontinental jump.
+                    baseline = recorder.points.size
+                    val base = recorder.points.lastOrNull()?.let { point ->
+                        CoordinateUtils.gcj02ToWgs84(point.lat, point.lng)
+                    } ?: CoordinateUtils.LatLng(39.908823, 116.397470)
+                    val direction = if (base.lat < 89.0) 1.0 else -1.0
+                    firstLat = base.lat + direction * 0.0001
+                    secondLat = base.lat + direction * 0.0002
+                    longitude = base.lng
+                    recorder.onLocationChanged(sample(firstLat, longitude))
+                    recorder.onLocationChanged(sample(secondLat, longitude))
+                    assertEquals(baseline + 2, recorder.points.size)
+                    val expected = CoordinateUtils.wgs84ToGcj02(secondLat, longitude)
+                    assertEquals(expected.lat, recorder.points.last().lat, 1e-9)
+                    assertEquals(expected.lng, recorder.points.last().lng, 1e-9)
+
+                    recorder.onLocationChanged(sample(secondLat + direction * 0.0001, longitude, mock = true))
+                    recorder.onLocationChanged(sample(secondLat + direction * 0.0001, longitude, ageMs = 30_000))
+                    val farLongitude = if (longitude < 178.0) longitude + 1.0 else longitude - 1.0
+                    recorder.onLocationChanged(sample(secondLat, farLongitude))
+                    assertEquals("mock, stale and implausible points must be rejected", baseline + 2, recorder.points.size)
+                }
+                await("accepted points were not saved") { !recorder.draftPending && !recorder.storageError }
+                val persisted = RealRouteDraft(context).load()
+                assertEquals(baseline + 2, persisted.points.size)
+                assertEquals(CoordinateUtils.wgs84ToGcj02(secondLat, longitude).lat, persisted.points.last().lat, 1e-9)
+
+                instrumentation.runOnMainSync {
+                    recorder.onProviderDisabled(LocationManager.GPS_PROVIDER)
+                    assertFalse(recorder.recording)
+                    assertEquals("gps", recorder.error)
+                    assertTrue("disabled GPS must retain the last point as a gap", recorder.hasGap)
+                    recorder.onLocationChanged(sample(firstLat, longitude))
+                    assertEquals("paused recorder must ignore points", baseline + 2, recorder.points.size)
+                }
+                await("provider-disabled anchor was not saved") { !recorder.draftPending && !recorder.storageError && !serviceRunning() }
+                assertEquals(secondLat to longitude, RealRouteDraft(context).load().gapAnchor)
+                startWithoutFurtherSystemFixes()
+                instrumentation.runOnMainSync {
+                    val direction = if (secondLat < 89.0) 1.0 else -1.0
+                    recorder.onLocationChanged(sample(secondLat + direction * 0.0006, longitude))
+                    assertFalse("resume far from disabled GPS anchor must pause", recorder.recording)
+                    assertEquals(baseline + 2, recorder.points.size)
+                }
+                await("service did not stop after distant GPS resume") { !serviceRunning() }
+                startWithoutFurtherSystemFixes()
+                instrumentation.runOnMainSync {
+                    recorder.onLocationChanged(sample(secondLat, longitude))
+                    assertFalse(recorder.hasGap)
+                    assertEquals(baseline + 3, recorder.points.size)
+                    recorder.pause()
+                }
+                await("resumed draft was not saved") { !recorder.draftPending && !recorder.storageError && !serviceRunning() }
+                val recovered = RealRouteDraft(context).load()
+                assertEquals(baseline + 3, recovered.points.size)
+                assertNull(recovered.gapAnchor)
+            }
+        } finally {
+            instrumentation.runOnMainSync { recorder.clear() }
+            await("test draft cleanup failed") { !recorder.draftPending && !recorder.storageError && !serviceRunning() }
         }
     }
 

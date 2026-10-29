@@ -207,7 +207,16 @@ internal class RealRouteRecorder private constructor(context: Context) : Locatio
         }
     }
     override fun onProviderDisabled(provider: String) {
-        if (provider == LocationManager.GPS_PROVIDER && recording) stopWithReason("gps")
+        if (provider == LocationManager.GPS_PROVIDER && recording) {
+            // Keep the last accepted raw GPS coordinate so a later resume cannot
+            // silently connect a distant point across a disabled-provider gap.
+            last?.let { point ->
+                gapAnchor = point.latitude to point.longitude
+                hasGap = true
+                persist()
+            }
+            stopWithReason("gps")
+        }
     }
 
     @Deprecated("Deprecated in Android") override fun onStatusChanged(provider: String?, status: Int, extras: android.os.Bundle?) = Unit
