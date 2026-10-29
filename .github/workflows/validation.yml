@@ -19,7 +19,7 @@ jobs:
         with:
           packages: platform-tools
       - run: chmod +x gradlew
-      - run: ./gradlew --no-daemon :app:assembleScopedCoexist :core-geo:test :xposed:test :app-ui:testScopedCoexistUnitTest
+      - run: ./gradlew --no-daemon :app:assembleScopedCoexist :core-geo:test :xposed:test :app-ui:testScopedDebugUnitTest
       - uses: actions/upload-artifact@v4
         with:
           name: scoped-coexist-apks
