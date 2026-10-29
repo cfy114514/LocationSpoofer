@@ -6,5 +6,7 @@
     <application>
         <activity android:name="com.vincenthzr.locationspoofer.ui.screen.tabs.route.RecordingTestActivity"
             android:exported="false" />
+        <activity android:name="com.vincenthzr.locationspoofer.ui.components.map.OsmTestActivity"
+            android:exported="false" />
     </application>
 </manifest>
