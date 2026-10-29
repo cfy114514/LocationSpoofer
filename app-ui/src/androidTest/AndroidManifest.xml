@@ -8,5 +8,7 @@
             android:exported="false" />
         <activity android:name="com.vincenthzr.locationspoofer.ui.components.map.OsmTestActivity"
             android:exported="false" />
+        <activity android:name="com.vincenthzr.locationspoofer.ui.screen.tabs.route.RouteConfigTestActivity"
+            android:exported="false" android:windowSoftInputMode="adjustResize" />
     </application>
 </manifest>
