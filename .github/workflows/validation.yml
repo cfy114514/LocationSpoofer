@@ -1,7 +1,5 @@
 name: Validate changes
 on:
-  push:
-    branches: ["codex/sync-local-features"]
   pull_request:
   workflow_dispatch:
 permissions:
@@ -9,6 +7,7 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
