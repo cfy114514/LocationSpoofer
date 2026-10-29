@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import java.util.concurrent.atomic.AtomicReference
 import kotlin.math.abs
 
 /**
@@ -120,14 +121,13 @@ class MotionController(
     private val recorded = ArrayList<LatLng>()
 
     // ---- 合并写入：只保证执行"最新一次"请求的运动状态，避免积压的旧写入晚于新写入落盘
-    @Volatile private var pendingWrite: (suspend () -> Unit)? = null
+    private val pendingWrite = AtomicReference<(suspend () -> Unit)?>(null)
     private val writeSignal = Channel<Unit>(Channel.CONFLATED)
 
     init {
         scope.launch {
             for (ignored in writeSignal) {
-                val job = pendingWrite ?: continue
-                pendingWrite = null
+                val job = pendingWrite.getAndSet(null) ?: continue
                 try {
                     job()
                 } catch (_: Exception) {
@@ -191,7 +191,7 @@ class MotionController(
     fun onStopped() {
         clearRoute()
         joyIntensity = 0f
-        pendingWrite = null
+        pendingWrite.set(null)
         if (_state.value.recording) finishRecording()
         _state.update { it.copy(mode = Mode.IDLE, speedMs = 0.0, hasRoute = false, paused = false, returning = false) }
         tickJob?.cancel()
@@ -416,7 +416,7 @@ class MotionController(
     }
 
     private fun enqueueWrite(block: suspend () -> Unit) {
-        pendingWrite = block
+        pendingWrite.set(block)
         writeSignal.trySend(Unit)
     }
 
