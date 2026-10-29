@@ -5,6 +5,7 @@ import android.app.NotificationManager
 import android.content.pm.PackageManager
 import androidx.core.app.NotificationManagerCompat
 import android.os.Build
+import android.os.SystemClock
 import androidx.core.content.ContextCompat
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -22,10 +23,20 @@ import androidx.lifecycle.LifecycleEventObserver
 import com.vincenthzr.locationspoofer.ui.R
 import com.vincenthzr.locationspoofer.viewmodel.MainViewModel
 import com.vincenthzr.locationspoofer.viewmodel.saveRealRoute
+import kotlinx.coroutines.delay
 
 @Composable
 internal fun RealRouteRecordingDialog(viewModel: MainViewModel, spoofing: Boolean, onDismiss: () -> Unit) {
     val recorder = viewModel.realRouteRecorder
+    var statsNow by remember { mutableLongStateOf(SystemClock.elapsedRealtime()) }
+    LaunchedEffect(recorder.recording) {
+        statsNow = SystemClock.elapsedRealtime()
+        while (recorder.recording) {
+            delay(1000)
+            statsNow = SystemClock.elapsedRealtime()
+        }
+    }
+    val recordedDistance = remember(recorder.points) { realRouteDistanceMeters(recorder.points) }
     val owner = LocalLifecycleOwner.current
     val context = LocalContext.current
     fun notificationsAllowed(): Boolean {
@@ -69,13 +80,16 @@ internal fun RealRouteRecordingDialog(viewModel: MainViewModel, spoofing: Boolea
                 Text(stringResource(R.string.real_route_foreground_hint))
                 if (!notificationAllowed) Text(stringResource(R.string.real_route_notification_denied), color = MaterialTheme.colorScheme.error)
                 if (spoofing) Text(stringResource(R.string.real_route_stop_spoof), color = MaterialTheme.colorScheme.error)
-                Text(stringResource(R.string.real_route_points, recorder.points.size))
+                Text(stringResource(R.string.real_route_stats, recordedDistance.toInt(), formatRecordingDuration(recorder.statistics.elapsed(statsNow)), recorder.points.size))
+                Text(stringResource(R.string.real_route_stats_rules), style = MaterialTheme.typography.bodySmall)
                 if (permissionDenied) Text(stringResource(R.string.real_route_permission_error), color = MaterialTheme.colorScheme.error)
                 if (recorder.error != null) Text(stringResource(when (recorder.error) {
                     "gps" -> R.string.real_route_gps_error
                     "limit" -> R.string.real_route_limit
                     "service" -> R.string.real_route_service_error
                     "spoofing" -> R.string.real_route_stop_spoof
+                    "storage" -> R.string.real_route_draft_error
+                    "gap" -> R.string.real_route_gap
                     else -> R.string.real_route_permission_error
                 }), color = MaterialTheme.colorScheme.error)
                 if (recorder.hasGap) {
@@ -94,7 +108,7 @@ internal fun RealRouteRecordingDialog(viewModel: MainViewModel, spoofing: Boolea
                     if (recorder.recording) {
                         OutlinedButton(onClick = recorder::pause) { Text(stringResource(R.string.real_route_pause)) }
                     } else {
-                        OutlinedButton(enabled = !spoofing && !saving && !clearing && !recorder.starting && !recorder.unreadableDraft && !recorder.atLimit, onClick = {
+                        OutlinedButton(enabled = !spoofing && !saving && !clearing && !recorder.starting && !recorder.storageError && !recorder.draftPending && !recorder.atLimit, onClick = {
                             if (recorder.points.isEmpty()) permission.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
                             else confirmResume = true
                         }) {

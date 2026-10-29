@@ -338,7 +338,7 @@ private fun MainViewModel.startSimulationWithPoints(pointsToRun: List<RoutePoint
         val records = environmentRecordsAt(startPoint.lat, startPoint.lng)
         val (wifi, cell, bluetooth) = locationToJson(records, startPoint.lat, startPoint.lng)
         _uiState.update { it.copy(collectedWifiJson = wifi, collectedCellJson = cell, collectedBluetoothJson = bluetooth) }
-        if (realRouteRecorder.recording || realRouteRecorder.starting) realRouteRecorder.pause()
+        realRouteRecorder.pauseForSimulation()
         locationRepository.startSpoofing(
             context,
             startPoint.lat,

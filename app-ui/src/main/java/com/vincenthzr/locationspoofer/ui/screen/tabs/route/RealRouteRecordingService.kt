@@ -78,6 +78,9 @@ internal class RealRouteRecordingService : Service() {
                 val message = when (reason) {
                     "gps" -> R.string.real_route_stopped_gps
                     "limit" -> R.string.real_route_stopped_limit
+                    "storage" -> R.string.real_route_stopped_storage
+                    "spoofing" -> R.string.real_route_stopped_spoofing
+                    "gap" -> R.string.real_route_stopped_gap
                     else -> return
                 }
                 val builder = NotificationCompat.Builder(context, CHANNEL)

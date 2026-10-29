@@ -660,7 +660,7 @@ Error details: %s</string>
     <string name="route_lateral_deviation">Smooth route deviation</string>
     <string name="route_lateral_deviation_desc">Gently varies left and right within 1.8 m of the route. Applies to the next run.</string>
     <string name="real_route_limit">Recording reached 10,000 points and stopped. Save or discard it.</string>
-    <string name="real_route_gap">GPS signal was interrupted. The recorded points across the gap will be joined by a straight line.</string>
+    <string name="real_route_gap">GPS was interrupted and recording paused. Return within 30 m of the last point to resume, or save the route.</string>
     <string name="real_route_gap_acknowledge">Understood</string>
     <string name="real_route_draft_error">Could not save or read the local draft. Keep this screen open and save the route.</string>
     <string name="real_route_draft_retry">Retry draft save</string>
@@ -673,7 +673,12 @@ Error details: %s</string>
     <string name="real_route_notification_title">Recording GPS route</string>
     <string name="real_route_service_error">Could not start GPS recording in the background. Open the app and try again.</string>
     <string name="real_route_stopped_title">Real route recording stopped</string>
+    <string name="real_route_stopped_storage">The draft could not be saved. Return to the app to retry or save the route.</string>
+    <string name="real_route_stopped_spoofing">Location simulation started. Return to the app to resume recording after it stops.</string>
+    <string name="real_route_stopped_gap">GPS was interrupted. Return near the last point to resume or save the route.</string>
     <string name="real_route_stopped_gps">GPS was disabled. Turn it on and return to the app to continue.</string>
     <string name="real_route_stopped_limit">The 10,000 point limit was reached. Return to the app to save the route.</string>
     <string name="real_route_notification_denied">Notifications for recording are unavailable. Return to the app to pause recording or see why it stopped.</string>
+    <string name="real_route_stats">Approx. %1$d m · %2$s · %3$d points</string>
+    <string name="real_route_stats_rules">Distance follows recorded points, including straight connections after pauses. Time counts only while recording and resets when the app process restarts.</string>
 </resources>

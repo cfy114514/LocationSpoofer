@@ -9,21 +9,21 @@ import java.io.File
 internal class RealRouteDraft(context: Context) {
     private val file = AtomicFile(File(context.filesDir, "real-route-draft-v1"))
 
-    fun load(): List<RoutePoint> = try {
-        file.openRead().bufferedReader(Charsets.UTF_8).use { decodeDraft(it.readText()) }
+    fun load(): RealRouteDraftData = try {
+        file.openRead().bufferedReader(Charsets.UTF_8).use { decodeDraftData(it.readText()) }
     } catch (_: java.io.FileNotFoundException) {
-        emptyList()
+        RealRouteDraftData(emptyList())
     }
 
-    fun save(points: List<RoutePoint>) {
-        if (points.isEmpty()) {
+    fun save(draft: RealRouteDraftData) {
+        if (draft.points.isEmpty()) {
             file.delete()
             check(!file.baseFile.exists() && !File(file.baseFile.path + ".bak").exists() && !File(file.baseFile.path + ".new").exists()) { "Draft removal failed" }
             return
         }
         val stream = file.startWrite()
         try {
-            stream.write(encodeDraft(points).toByteArray(Charsets.UTF_8))
+            stream.write(encodeDraftData(draft).toByteArray(Charsets.UTF_8))
             file.finishWrite(stream)
         } catch (e: Exception) {
             file.failWrite(stream)

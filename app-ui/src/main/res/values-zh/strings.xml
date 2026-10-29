@@ -660,7 +660,7 @@
     <string name="route_lateral_deviation">平滑路线偏移</string>
     <string name="route_lateral_deviation_desc">沿路线左右缓慢偏移，范围不超过 1.8 米；下次运行时生效。</string>
     <string name="real_route_limit">已达到 10000 个点，录制已停止。请保存或放弃。</string>
-    <string name="real_route_gap">GPS 信号出现中断，中断前后的点将以直线连接。</string>
+    <string name="real_route_gap">GPS 信号中断，录制已暂停。请回到最后记录点 30 米内继续，或保存路线。</string>
     <string name="real_route_gap_acknowledge">知道了</string>
     <string name="real_route_draft_error">无法保存或读取本地草稿。请保持页面打开并保存路线。</string>
     <string name="real_route_draft_retry">重试保存草稿</string>
@@ -673,7 +673,12 @@
     <string name="real_route_notification_title">正在记录 GPS 路线</string>
     <string name="real_route_service_error">无法启动后台 GPS 录制，请打开应用后重试。</string>
     <string name="real_route_stopped_title">真实路线录制已停止</string>
+    <string name="real_route_stopped_storage">无法保存草稿，请返回应用重试或保存路线。</string>
+    <string name="real_route_stopped_spoofing">位置模拟已启动，停止模拟后可返回应用继续录制。</string>
+    <string name="real_route_stopped_gap">GPS 出现中断，请回到最后记录点附近继续，或保存路线。</string>
     <string name="real_route_stopped_gps">GPS 已关闭。请开启 GPS 并返回应用继续录制。</string>
     <string name="real_route_stopped_limit">已达到 10000 个点，请返回应用保存路线。</string>
     <string name="real_route_notification_denied">录制通知不可用，请返回应用暂停录制或查看停止原因。</string>
+    <string name="real_route_stats">约 %1$d 米 · %2$s · %3$d 点</string>
+    <string name="real_route_stats_rules">距离按已记录点连线计算，包含暂停后的直线连接。时长仅累计录制期间，暂停不计；应用进程重启后归零。</string>
 </resources>
