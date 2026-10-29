@@ -103,6 +103,41 @@ class RealRouteAndroidTest {
         }
     }
 
+    @Test fun rapidPauseAndRestartKeepsRecorderRunning() {
+        val manager = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
+        assertTrue("Enable GPS on the test emulator before running", manager.isProviderEnabled(LocationManager.GPS_PROVIDER))
+        val recorder = RealRouteRecorder.getInstance(context)
+        try {
+            instrumentation.runOnMainSync { recorder.clear() }
+            await("test draft could not be cleared") { !recorder.draftPending && !recorder.storageError }
+            ActivityScenario.launch(RecordingTestActivity::class.java).use {
+                instrumentation.runOnMainSync { assertTrue("initial start rejected: ${recorder.error}", recorder.start()) }
+                await("initial recorder did not start") { recorder.recording && serviceRunning() }
+                repeat(3) { attempt ->
+                    // Detach live callbacks and wait for any already queued draft write so
+                    // only the service stop/start ordering is exercised. Both calls happen
+                    // in one main-thread turn, before onDestroy can run on that thread.
+                    await("recorder not ready for rapid restart") {
+                        if (!recorder.recording || !serviceRunning()) false
+                        else {
+                            manager.removeUpdates(recorder)
+                            if (recorder.draftPending || recorder.storageError) false
+                            else {
+                                recorder.pause()
+                                assertTrue("rapid restart ${attempt + 1} rejected: ${recorder.error}", recorder.start())
+                                true
+                            }
+                        }
+                    }
+                    await("rapid restart ${attempt + 1} did not remain recording") { recorder.recording && serviceRunning() }
+                }
+            }
+        } finally {
+            instrumentation.runOnMainSync { recorder.clear() }
+            await("test draft cleanup failed") { !recorder.draftPending && !recorder.storageError && !serviceRunning() }
+        }
+    }
+
     @Test @SdkSuppress(minSdkVersion = 31)
     fun syntheticCallbacksFilterConvertPersistAndResumeAfterGap() {
         val manager = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
