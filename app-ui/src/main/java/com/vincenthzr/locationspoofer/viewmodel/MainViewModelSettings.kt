@@ -48,6 +48,10 @@ internal fun MainViewModel.initialize() {
         val root = locationRepository.recoverAfterBoot(context)
         // 进程重启后恢复的模拟是定点状态，让运动控制器（悬浮摇杆）接上这个位置
         motionController.syncFromSpoofingStateIfIdle()
+        if (settingsRepository.fixedJoystickEnabled && SpoofingState.isActive &&
+            motionController.state.value.active && !motionController.state.value.hasRoute) {
+            withContext(Dispatchers.Main) { showFixedJoystickIfAvailable() }
+        }
 
         // 模拟中恢复模拟坐标；否则（开启了"停留在上次位置"时）恢复上次选定的位置，不再自动跳到真实位置（issue #68）
         val restoredPosition = when {
@@ -124,10 +128,7 @@ internal fun MainViewModel.initialize() {
                 } catch (e: Exception) {
                     e.printStackTrace()
                 }
-                com.vincenthzr.locationspoofer.data.model.SavedRoute(entity.name, points).apply {
-                    // 如果需要，动态附加 ID，或者直接使用名称进行删除
-                    // 目前 MapScreen 的 showSavedRoutesDialog 使用 route.name
-                }
+                com.vincenthzr.locationspoofer.data.model.SavedRoute(entity.name, points, id = entity.id)
             }
             _uiState.update { it.copy(savedRoutes = routes) }
         }

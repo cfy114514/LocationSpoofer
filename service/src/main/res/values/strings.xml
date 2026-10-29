@@ -5,6 +5,7 @@
     <string name="spoofing_service_channel_name">Location Spoofer Service</string>
     <string name="spoofing_bg_notification_title">Location Spoofing Background Notification</string>
     <string name="floating_joystick_title">Joystick</string>
+    <string name="fj_open_failed">Unable to open the joystick. Check overlay permission and try again.</string>
     <string name="fj_collapse">Collapse</string>
     <string name="fj_preset_walking">Walk</string>
     <string name="fj_preset_running">Run</string>

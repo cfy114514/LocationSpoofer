@@ -6,6 +6,10 @@ import com.vincenthzr.locationspoofer.utils.SettingsManager
 
 class SettingsRepository(private val settingsManager: SettingsManager) {
 
+    var fixedJoystickEnabled: Boolean
+        get() = settingsManager.fixedJoystickEnabled
+        set(value) { settingsManager.fixedJoystickEnabled = value }
+
     fun getSavedLocations(): List<SavedLocation> = settingsManager.getSavedLocations()
 
     fun setSavedLocations(locations: List<SavedLocation>) = settingsManager.saveLocationList(locations)

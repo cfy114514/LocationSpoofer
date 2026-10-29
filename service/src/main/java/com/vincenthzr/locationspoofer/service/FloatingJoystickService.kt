@@ -71,7 +71,7 @@ import kotlin.math.sqrt
 /**
  * 悬浮摇杆：浮在其他 App 之上操作模拟位置，所有操作都转给进程级 [MotionController]，
  * 和 App 里的界面共用同一份状态。可以收起成小圆点，减少对下层 App 的遮挡。
- * 只在"摇杆手动控制"的路线模拟中出现，没有关闭按钮；路线停止（且录制的路线已保存或丢弃）后自动关闭。
+ * 可用于定点模拟和手动路线；模拟停止（且录制的路线已保存或丢弃）后自动关闭。
  */
 class FloatingJoystickService : Service(), LifecycleOwner, ViewModelStoreOwner, SavedStateRegistryOwner {
 
@@ -91,16 +91,28 @@ class FloatingJoystickService : Service(), LifecycleOwner, ViewModelStoreOwner, 
 
     override fun onCreate() {
         super.onCreate()
-        isShowing = true
         savedStateRegistryController.performRestore(null)
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_CREATE)
+        if (!android.provider.Settings.canDrawOverlays(this)) {
+            Toast.makeText(this, R.string.fj_open_failed, Toast.LENGTH_LONG).show()
+            stopSelf()
+            return
+        }
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
-        showFloatingWindow()
+        try {
+            showFloatingWindow()
+        } catch (_: RuntimeException) {
+            composeView = null
+            Toast.makeText(this, R.string.fj_open_failed, Toast.LENGTH_LONG).show()
+            stopSelf()
+            return
+        }
+        isShowing = true
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_START)
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_RESUME)
         lifecycleScope.launch {
             motionController.state.collect {
-                if (!it.hasRoute && !it.hasPendingRecording) stopSelf()
+                if (!it.active && !it.hasPendingRecording) stopSelf()
             }
         }
     }

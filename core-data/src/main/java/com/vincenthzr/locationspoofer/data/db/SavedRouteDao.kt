@@ -20,4 +20,7 @@ interface SavedRouteDao {
 
     @Delete
     suspend fun deleteSavedRoute(route: SavedRouteEntity)
+
+    @Query("DELETE FROM saved_routes WHERE id = :id")
+    suspend fun deleteSavedRouteById(id: Long)
 }

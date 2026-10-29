@@ -101,6 +101,7 @@ class MainViewModel(
             mockBluetooth = settingsRepository.mockBluetooth,
             enableJitter = settingsRepository.enableJitter,
             restartAppsOnSpoof = settingsRepository.restartAppsOnSpoof,
+            fixedJoystickEnabled = settingsRepository.fixedJoystickEnabled,
             altitudeInput = settingsRepository.altitude,
             altitudeVariationM = settingsRepository.altitudeVariationM,
             barometerSimulation = settingsRepository.barometerSimulation,

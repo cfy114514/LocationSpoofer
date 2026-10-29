@@ -90,6 +90,7 @@ data class AppState(
     val showCoordinateError: Boolean = false,
     val isSavingConfig: Boolean = false,
     val isSpoofingActive: Boolean = false,
+    val fixedJoystickEnabled: Boolean = false,
     val wifiLoadStatus: WifiLoadStatus = WifiLoadStatus.IDLE,
     val wifiApCount: Int = 0,
     val savedLocations: List<SavedLocation> = emptyList(),

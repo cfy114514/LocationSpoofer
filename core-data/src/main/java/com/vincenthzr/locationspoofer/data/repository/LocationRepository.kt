@@ -343,4 +343,8 @@ class LocationRepository(
     suspend fun deleteSavedRoute(route: SavedRouteEntity) {
         savedRouteDao.deleteSavedRoute(route)
     }
+
+    suspend fun deleteSavedRouteById(id: Long) {
+        savedRouteDao.deleteSavedRouteById(id)
+    }
 }

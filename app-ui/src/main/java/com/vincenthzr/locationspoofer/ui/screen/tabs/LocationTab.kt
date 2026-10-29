@@ -80,6 +80,7 @@ import com.vincenthzr.locationspoofer.viewmodel.selectCollectedRoute
 import com.vincenthzr.locationspoofer.viewmodel.selectCollectedLocation
 import com.vincenthzr.locationspoofer.viewmodel.setAltitude
 import com.vincenthzr.locationspoofer.viewmodel.setBarometerSimulation
+import com.vincenthzr.locationspoofer.viewmodel.setFixedJoystickEnabled
 import com.vincenthzr.locationspoofer.viewmodel.setAltitudeVariation
 import com.vincenthzr.locationspoofer.viewmodel.setMapEngine
 import com.vincenthzr.locationspoofer.viewmodel.setMapType
@@ -574,6 +575,7 @@ fun LocationTab(
             onToggleBluetooth = viewModel::toggleMockBluetooth,
             onToggleJitter = viewModel::toggleEnableJitter,
             onToggleRestartApps = viewModel::toggleRestartAppsOnSpoof,
+            onFixedJoystickChange = viewModel::setFixedJoystickEnabled,
             onAltitudeChange = viewModel::setAltitude,
             onAltitudeVariationChange = viewModel::setAltitudeVariation,
             onBarometerChange = viewModel::setBarometerSimulation,

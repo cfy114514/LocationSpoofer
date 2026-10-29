@@ -15,7 +15,6 @@ import com.vincenthzr.locationspoofer.data.state.SpoofingState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.withLock
@@ -82,14 +81,9 @@ internal fun MainViewModel.saveRoute(name: String, points: List<RoutePoint>) {
 }
 
 internal fun MainViewModel.deleteSavedRoute(route: com.vincenthzr.locationspoofer.data.model.SavedRoute) {
+    val id = route.id ?: return
     viewModelScope.launch(Dispatchers.IO) {
-        // 我们通过寻找匹配名称的实体进行删除
-        // （有点取巧，但目前有效，或者我们可以在 DAO 中添加按名称删除的功能）
-        val routes = locationRepository.getSavedRoutes().first()
-        val entity = routes.find { it.name == route.name }
-        if (entity != null) {
-            locationRepository.deleteSavedRoute(entity)
-        }
+        locationRepository.deleteSavedRouteById(id)
     }
 }
 

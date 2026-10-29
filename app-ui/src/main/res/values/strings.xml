@@ -69,6 +69,8 @@
     <string name="root_solution_sukisu_ultra">SukiSU Ultra</string>
     <string name="root_solution_resukisu_ultra">ReSukiSU Ultra</string>
     <string name="floating_joystick">Floating joystick</string>
+    <string name="fixed_joystick_option">Use floating joystick for fixed location</string>
+    <string name="fixed_joystick_open_failed">Unable to open the joystick. Check overlay permission and try again.</string>
     <string name="overlay_permission_required">Allow "Display over other apps", then open the floating joystick again</string>
     <string name="overlay_permission_on_launch">The floating joystick needs "Display over other apps". Please allow it on the next screen</string>
     <string name="motion_realism_title">Motion Realism</string>
@@ -355,6 +357,8 @@
     <string name="joystick_manual_control_desc">A floating joystick appears so you can steer from any app</string>
     <string name="cruise_speed">Cruise Speed</string>
     <string name="custom_speed">Custom Speed</string>
+    <string name="route_speed_input">Speed (m/s)</string>
+    <string name="route_speed_input_hint">Enter a speed from 0.2 to 45 m/s</string>
     <string name="pace_format">Pace: %s</string>
     <string name="step_cadence_simulation">Cadence &amp; Step Simulation</string>
     <string name="step_cadence_simulation_desc">Inject real-time steps and physiological cadence into fitness apps</string>

@@ -69,6 +69,29 @@ class MotionControllerTest {
     }
 
     @Test
+    fun `fixed simulation joystick moves and release and restart stop movement`() {
+        controller.onStaticStarted(start.lat, start.lng)
+        controller.setSpeedPreset(walking)
+        controller.tick(now)
+        assertTrue(controller.state.value.joystickEnabled)
+        assertFalse(controller.state.value.hasRoute)
+        controller.joystick(90.0, 1f)
+        repeat(5) { advance(1_000) }
+        assertEquals(10.0, GeoMath.distance(start, here()), 0.05)
+        controller.joystick(0.0, 0f)
+        val released = here()
+        advance(1_000)
+        assertEquals(0.0, GeoMath.distance(released, here()), 1e-6)
+        awaitUntil { sink.manual.lastOrNull()?.speed == 0.0 }
+        controller.onStopped()
+        assertFalse(controller.state.value.joystickEnabled)
+        controller.onStaticStarted(start.lat, start.lng)
+        controller.tick(now)
+        advance(1_000)
+        assertEquals(0.0, GeoMath.distance(start, here()), 1e-6)
+    }
+
+    @Test
     fun `route playback advances along the path`() {
         startRoute()
         advance(10_000)

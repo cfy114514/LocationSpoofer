@@ -74,6 +74,8 @@
     <string name="root_solution_sukisu_ultra">SukiSU Ultra</string>
     <string name="root_solution_resukisu_ultra">ReSukiSU Ultra</string>
     <string name="floating_joystick">悬浮摇杆</string>
+    <string name="fixed_joystick_option">定点模拟使用悬浮摇杆</string>
+    <string name="fixed_joystick_open_failed">无法打开悬浮摇杆，请检查悬浮窗权限后重试。</string>
     <string name="overlay_permission_required">请允许"显示在其他应用上层"，然后再次打开悬浮摇杆</string>
     <string name="overlay_permission_on_launch">悬浮摇杆需要"显示在其他应用上层"权限，请在打开的页面中允许</string>
     <string name="motion_realism_title">运动真实度</string>
@@ -354,6 +356,8 @@
     <string name="joystick_manual_control_desc">开始后弹出悬浮摇杆，可在任意 App 上手动控制移动</string>
     <string name="cruise_speed">巡航速度</string>
     <string name="custom_speed">自定义速度</string>
+    <string name="route_speed_input">速度（米/秒）</string>
+    <string name="route_speed_input_hint">请输入 0.2–45 米/秒，可输入小数</string>
     <string name="pace_format">配速: %s</string>
     <string name="step_cadence_simulation">步频与计步模拟</string>
     <string name="step_cadence_simulation_desc">为运动软件注入实时计步与生理步频数据</string>

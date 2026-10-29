@@ -11,6 +11,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -32,6 +34,7 @@ fun StartSpoofingDialog(
     onToggleBluetooth: () -> Unit,
     onToggleJitter: () -> Unit,
     onToggleRestartApps: () -> Unit,
+    onFixedJoystickChange: (Boolean) -> Unit,
     onAltitudeChange: (String) -> Unit,
     onAltitudeVariationChange: (Int) -> Unit,
     onBarometerChange: (Boolean) -> Unit,
@@ -76,6 +79,19 @@ fun StartSpoofingDialog(
                         color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
                     )
                     Spacer(Modifier.height(16.dp))
+
+                    val fixedJoystickLabel = stringResource(R.string.fixed_joystick_option)
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(Icons.Outlined.Gamepad, null, tint = AccentBlue, modifier = Modifier.size(20.dp))
+                        Spacer(Modifier.width(12.dp))
+                        Text(fixedJoystickLabel, modifier = Modifier.weight(1f),
+                            fontSize = 15.sp, color = MaterialTheme.colorScheme.onBackground)
+                        Switch(checked = uiState.fixedJoystickEnabled, onCheckedChange = onFixedJoystickChange,
+                            modifier = Modifier.semantics { contentDescription = fixedJoystickLabel })
+                    }
 
                     // 两种方案都根据当前点位的数据能力显示选项；在线数据源可在开始模拟时补齐数据。
                     val showWifiToggle = uiState.canMockWifi || uiState.wigleToken.isNotBlank()
