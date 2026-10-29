@@ -664,4 +664,8 @@
     <string name="real_route_gap_acknowledge">知道了</string>
     <string name="real_route_draft_error">无法保存或读取本地草稿。请保持页面打开并保存路线。</string>
     <string name="real_route_draft_retry">重试保存草稿</string>
+    <string name="real_route_resume_title">继续录制？</string>
+    <string name="real_route_resume_warning">下一个 GPS 点会与草稿中的最后一个点直线连接，即使暂停或退出期间你已经走了很远。确认可以接受后再继续。</string>
+    <string name="real_route_draft_discard_corrupt">丢弃无法读取的草稿</string>
+    <string name="real_route_draft_corrupt_confirm">此操作将永久删除无法读取的草稿，确定继续吗？</string>
 </resources>

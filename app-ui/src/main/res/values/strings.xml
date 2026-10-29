@@ -664,4 +664,8 @@ Error details: %s</string>
     <string name="real_route_gap_acknowledge">Understood</string>
     <string name="real_route_draft_error">Could not save or read the local draft. Keep this screen open and save the route.</string>
     <string name="real_route_draft_retry">Retry draft save</string>
+    <string name="real_route_resume_title">Continue recording?</string>
+    <string name="real_route_resume_warning">The next GPS point will be connected to the last saved draft point by a straight line, even if you moved far away while recording was stopped. Continue only if that is acceptable.</string>
+    <string name="real_route_draft_discard_corrupt">Discard unreadable draft</string>
+    <string name="real_route_draft_corrupt_confirm">This permanently removes the unreadable draft. Continue?</string>
 </resources>

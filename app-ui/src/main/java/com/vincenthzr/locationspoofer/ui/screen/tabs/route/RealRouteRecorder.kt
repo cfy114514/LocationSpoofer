@@ -22,7 +22,7 @@ import kotlinx.coroutines.withContext
 import java.util.concurrent.atomic.AtomicLong
 
 /** Foreground-only GPS recording. The caller owns and closes this listener. */
-internal class RealRouteRecorder(context: Context) : LocationListener {
+internal class RealRouteRecorder private constructor(context: Context) : LocationListener {
     private val manager = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
     private val appContext = context.applicationContext
     var recording by mutableStateOf(false)
@@ -35,7 +35,8 @@ internal class RealRouteRecorder(context: Context) : LocationListener {
     private val draftScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     var storageError by mutableStateOf(false)
         private set
-    private var unreadableDraft = false
+    var unreadableDraft by mutableStateOf(false)
+        private set
     var points by mutableStateOf<List<RoutePoint>>(try { draft.load() } catch (_: Exception) { unreadableDraft = true; storageError = true; emptyList() })
         private set
     var error by mutableStateOf<String?>(null)
@@ -45,7 +46,11 @@ internal class RealRouteRecorder(context: Context) : LocationListener {
             for ((version, snapshot) in writes) {
                 val failed = try { draft.save(snapshot); false } catch (_: Exception) { true }
                 withContext(Dispatchers.Main) {
-                    if (revision.get() == version) { storageError = failed; draftPending = false }
+                    if (revision.get() == version) {
+                        storageError = failed
+                        draftPending = false
+                        if (!failed && snapshot.isEmpty()) unreadableDraft = false
+                    }
                 }
             }
         }
@@ -55,6 +60,7 @@ internal class RealRouteRecorder(context: Context) : LocationListener {
         writes.trySend(revision.incrementAndGet() to points)
     }
     fun retryDraftSave() { if (!unreadableDraft) persist() }
+    fun retryDiscardDraft() { if (points.isEmpty()) persist() }
     private var last: Location? = null
     var hasGap by mutableStateOf(false)
         private set
@@ -119,7 +125,13 @@ internal class RealRouteRecorder(context: Context) : LocationListener {
         persist()
         if (atLimit) { pause(); error = "limit" }
     }
-    companion object { const val MAX_POINTS = 10_000 }
+    companion object {
+        const val MAX_POINTS = 10_000
+        @Volatile private var instance: RealRouteRecorder? = null
+        fun getInstance(context: Context): RealRouteRecorder = instance ?: synchronized(this) {
+            instance ?: RealRouteRecorder(context.applicationContext).also { instance = it }
+        }
+    }
     override fun onProviderDisabled(provider: String) {
         if (provider == LocationManager.GPS_PROVIDER && recording) { pause(); error = "gps" }
     }

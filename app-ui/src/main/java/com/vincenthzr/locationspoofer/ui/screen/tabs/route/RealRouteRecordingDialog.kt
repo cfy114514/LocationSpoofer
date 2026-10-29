@@ -24,8 +24,11 @@ internal fun RealRouteRecordingDialog(viewModel: MainViewModel, spoofing: Boolea
     var name by rememberSaveable { mutableStateOf("") }
     var saving by remember { mutableStateOf(false) }
     var saveFailed by remember { mutableStateOf(false) }
+    var clearing by remember { mutableStateOf(false) }
+    var confirmUnreadable by remember { mutableStateOf(false) }
     var permissionDenied by remember { mutableStateOf(false) }
     var confirmDiscard by remember { mutableStateOf(false) }
+    var confirmResume by remember { mutableStateOf(false) }
     val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { grants ->
         val granted = grants[Manifest.permission.ACCESS_FINE_LOCATION] == true
         permissionDenied = !granted
@@ -39,11 +42,14 @@ internal fun RealRouteRecordingDialog(viewModel: MainViewModel, spoofing: Boolea
         onDispose { owner.lifecycle.removeObserver(observer); recorder.pause() }
     }
     LaunchedEffect(spoofing) { if (spoofing) recorder.pause() }
+    LaunchedEffect(clearing, recorder.draftPending, recorder.storageError) {
+        if (clearing && !recorder.draftPending && !recorder.storageError) { clearing = false; onDismiss() }
+    }
     val dismiss = {
         if (recorder.points.isNotEmpty()) confirmDiscard = true else { recorder.pause(); onDismiss() }
     }
     AlertDialog(
-        onDismissRequest = { if (!saving) dismiss() },
+        onDismissRequest = { if (!saving && !clearing) dismiss() },
         title = { Text(stringResource(R.string.real_route_title)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -62,7 +68,9 @@ internal fun RealRouteRecordingDialog(viewModel: MainViewModel, spoofing: Boolea
                 }
                 if (recorder.storageError) {
                     Text(stringResource(R.string.real_route_draft_error), color = MaterialTheme.colorScheme.error)
-                    if (recorder.points.isNotEmpty()) TextButton(onClick = recorder::retryDraftSave) { Text(stringResource(R.string.real_route_draft_retry)) }
+                    if (clearing) TextButton(onClick = recorder::retryDiscardDraft) { Text(stringResource(R.string.real_route_draft_retry)) }
+                    else if (recorder.unreadableDraft) TextButton(onClick = { confirmUnreadable = true }) { Text(stringResource(R.string.real_route_draft_discard_corrupt)) }
+                    else if (recorder.points.isNotEmpty()) TextButton(onClick = recorder::retryDraftSave) { Text(stringResource(R.string.real_route_draft_retry)) }
                 }
                 if (saveFailed) Text(stringResource(R.string.real_route_save_failed), color = MaterialTheme.colorScheme.error)
                 OutlinedTextField(value = name, onValueChange = { name = it }, singleLine = true, label = { Text(stringResource(R.string.real_route_name)) })
@@ -70,7 +78,10 @@ internal fun RealRouteRecordingDialog(viewModel: MainViewModel, spoofing: Boolea
                     if (recorder.recording) {
                         OutlinedButton(onClick = recorder::pause) { Text(stringResource(R.string.real_route_pause)) }
                     } else {
-                        OutlinedButton(enabled = !spoofing && !saving && !recorder.atLimit, onClick = { permission.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)) }) {
+                        OutlinedButton(enabled = !spoofing && !saving && !clearing && !recorder.unreadableDraft && !recorder.atLimit, onClick = {
+                            if (recorder.points.isEmpty()) permission.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
+                            else confirmResume = true
+                        }) {
                             Text(stringResource(if (recorder.points.isEmpty()) R.string.real_route_start else R.string.real_route_resume))
                         }
                     }
@@ -78,21 +89,40 @@ internal fun RealRouteRecordingDialog(viewModel: MainViewModel, spoofing: Boolea
             }
         },
         confirmButton = {
-            TextButton(enabled = !saving && recorder.points.size >= 2 && name.isNotBlank(), onClick = {
+            TextButton(enabled = !saving && !clearing && recorder.points.size >= 2 && name.isNotBlank(), onClick = {
                 recorder.pause(); saving = true; saveFailed = false
                 viewModel.saveRealRoute(name.trim(), recorder.points) { success ->
                     saving = false
-                    if (success) { recorder.clear(); onDismiss() } else saveFailed = true
+                    if (success) { recorder.clear(); clearing = true } else saveFailed = true
                 }
             }) { Text(stringResource(R.string.real_route_save)) }
         },
-        dismissButton = { TextButton(enabled = !saving, onClick = dismiss) { Text(stringResource(R.string.real_route_close)) } }
+        dismissButton = { TextButton(enabled = !saving && !clearing, onClick = dismiss) { Text(stringResource(R.string.real_route_close)) } }
+    )
+    if (confirmUnreadable) AlertDialog(
+        onDismissRequest = { confirmUnreadable = false },
+        title = { Text(stringResource(R.string.real_route_draft_discard_corrupt)) },
+        text = { Text(stringResource(R.string.real_route_draft_corrupt_confirm)) },
+        confirmButton = { TextButton(onClick = { recorder.clear(); clearing = true; confirmUnreadable = false }) { Text(stringResource(R.string.real_route_discard)) } },
+        dismissButton = { TextButton(onClick = { confirmUnreadable = false }) { Text(stringResource(R.string.real_route_keep)) } }
+    )
+    if (confirmResume) AlertDialog(
+        onDismissRequest = { confirmResume = false },
+        title = { Text(stringResource(R.string.real_route_resume_title)) },
+        text = { Text(stringResource(R.string.real_route_resume_warning)) },
+        confirmButton = {
+            TextButton(onClick = {
+                confirmResume = false
+                permission.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
+            }) { Text(stringResource(R.string.real_route_resume)) }
+        },
+        dismissButton = { TextButton(onClick = { confirmResume = false }) { Text(stringResource(R.string.real_route_keep)) } }
     )
     if (confirmDiscard) AlertDialog(
         onDismissRequest = { confirmDiscard = false },
         title = { Text(stringResource(R.string.real_route_discard_title)) },
         text = { Text(stringResource(R.string.real_route_discard_message)) },
-        confirmButton = { TextButton(onClick = { recorder.clear(); confirmDiscard = false; onDismiss() }) { Text(stringResource(R.string.real_route_discard)) } },
+        confirmButton = { TextButton(onClick = { recorder.clear(); clearing = true; confirmDiscard = false }) { Text(stringResource(R.string.real_route_discard)) } },
         dismissButton = { TextButton(enabled = !recorder.draftPending && !recorder.storageError, onClick = { recorder.pause(); confirmDiscard = false; onDismiss() }) { Text(stringResource(R.string.real_route_keep)) } }
     )
 }

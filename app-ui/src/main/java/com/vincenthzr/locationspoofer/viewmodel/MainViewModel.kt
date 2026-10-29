@@ -46,7 +46,7 @@ class MainViewModel(
     internal val motionController: MotionController,
     internal val context: Context
 ) : ViewModel() {
-    internal val realRouteRecorder by lazy { com.vincenthzr.locationspoofer.ui.screen.tabs.route.RealRouteRecorder(context) }
+    internal val realRouteRecorder by lazy { com.vincenthzr.locationspoofer.ui.screen.tabs.route.RealRouteRecorder.getInstance(context) }
     internal var lastMapMoveTime = 0L
     internal var mapMoveJob: Job? = null
     internal var gaitRecordingJob: Job? = null

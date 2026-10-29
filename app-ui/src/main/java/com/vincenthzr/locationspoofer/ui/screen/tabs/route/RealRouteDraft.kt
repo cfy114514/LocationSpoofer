@@ -16,7 +16,11 @@ internal class RealRouteDraft(context: Context) {
     }
 
     fun save(points: List<RoutePoint>) {
-        if (points.isEmpty()) { file.delete(); return }
+        if (points.isEmpty()) {
+            file.delete()
+            check(!file.baseFile.exists() && !File(file.baseFile.path + ".bak").exists() && !File(file.baseFile.path + ".new").exists()) { "Draft removal failed" }
+            return
+        }
         val stream = file.startWrite()
         try {
             stream.write(encodeDraft(points).toByteArray(Charsets.UTF_8))
