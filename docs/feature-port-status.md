@@ -10,8 +10,8 @@
 - **路线横向偏移**：根据样本中观察到的行为独立实现，开关默认关闭；启用后按沿路线距离产生平滑偏移，接近端点时衰减。偏移和运动控制见 [RoutePath.kt](../core-geo/src/main/kotlin/com/vincenthzr/locationspoofer/utils/RoutePath.kt) 和 [MotionController.kt](../core-data/src/main/java/com/vincenthzr/locationspoofer/data/motion/MotionController.kt)。
 - **气压模拟**：开关默认关闭；模拟期间根据模拟海拔和标准大气近似值调整气压传感器事件，并加入缓慢的小幅变化。需要设备有实体气压计、目标进程通过 Java 监听器收到传感器事件且 Hook 生效；海拔超出模型范围时不改写。该模型为独立近似实现，波动参数与样本不同。见 [PressureModel.kt](../xposed/src/main/java/com/vincenthzr/locationspoofer/xposed/hooks/PressureModel.kt) 和 [SensorStepHooker.kt](../xposed/src/main/java/com/vincenthzr/locationspoofer/xposed/hooks/SensorStepHooker.kt)。
 - **GNSS 状态**：已有模拟卫星状态及 NMEA 回调。旧 `GpsStatus` 按 [AOSP 映射规则](https://android.googlesource.com/platform/frameworks/base/+/bb83b89/location/java/android/location/GpsStatus.java) 编号，旧接口不显示没有对应编号的 Galileo；现代 `GnssStatus` 保留多星座。模拟激活时原始 GNSS 测量和导航电文回调被抑制，并未合成此类数据。具体设备及框架上的交付仍需验证。见 [GnssFastMockEngine.kt](../xposed/src/main/java/com/vincenthzr/locationspoofer/xposed/hooks/GnssFastMockEngine.kt) 和 [GnssStatusHooker.kt](../xposed/src/main/java/com/vincenthzr/locationspoofer/xposed/hooks/GnssStatusHooker.kt)。
-- **摇杆方向锁定**：悬浮摇杆稳定推向一个方向约 1.5 秒后锁定，松手仍保持方向；可点击解锁并停止，再次拖动也会解锁，收起悬浮窗或摇杆不可用时自动解除。需要悬浮窗和摇杆正常工作，实际触控体验待设备验证。见 [FloatingJoystickService.kt](../service/src/main/java/com/vincenthzr/locationspoofer/service/FloatingJoystickService.kt) 和 [JoystickDirectionLatch.kt](../service/src/main/java/com/vincenthzr/locationspoofer/service/JoystickDirectionLatch.kt)。
-- **真实路线录制**：使用系统 GPS、前台服务和本地草稿，提供录制点数、距离、时长及保存；信号中断会暂停，恢复需回到断点附近，启动模拟时暂停录制。时长仅累计当前进程中实际录制的时间，暂停期间不计，进程重启后时长重置；距离按保存轨迹相邻点的直线距离累计，包括暂停前后的连接。见 [RealRouteRecorder.kt](../app-ui/src/main/java/com/vincenthzr/locationspoofer/ui/screen/tabs/route/RealRouteRecorder.kt)、[RealRouteStatistics.kt](../app-ui/src/main/java/com/vincenthzr/locationspoofer/ui/screen/tabs/route/RealRouteStatistics.kt) 和 [RealRouteRecordingService.kt](../app-ui/src/main/java/com/vincenthzr/locationspoofer/ui/screen/tabs/route/RealRouteRecordingService.kt)。
+- **摇杆方向锁定**：悬浮摇杆以至少 50% 的力度稳定推向一个方向约 1.5 秒后锁定，松手仍保持方向；同一次拖动中回到中心后可再次推向稳定方向并重新锁定。可点击解锁并停止，再次拖动也会解锁，收起悬浮窗或摇杆不可用时自动解除。需要悬浮窗和摇杆正常工作，实际触控体验待设备验证。见 [FloatingJoystickService.kt](../service/src/main/java/com/vincenthzr/locationspoofer/service/FloatingJoystickService.kt) 和 [JoystickDirectionLatch.kt](../service/src/main/java/com/vincenthzr/locationspoofer/service/JoystickDirectionLatch.kt)。
+- **真实路线录制**：使用系统 GPS、前台服务和本地草稿，提供录制点数、距离、时长及保存；“保存并使用路线”会将保存的路线载入规划页面，不会自动启动模拟。录制时路线页可显示轨迹和最新点，用户可选择跟随；手动拖动地图会停止跟随。信号中断会暂停，恢复需回到断点附近，启动模拟时暂停录制。时长仅累计当前进程中实际录制的时间，暂停期间不计，进程重启后时长重置；距离按保存轨迹相邻点的直线距离累计，包括暂停前后的连接。见 [RealRouteRecorder.kt](../app-ui/src/main/java/com/vincenthzr/locationspoofer/ui/screen/tabs/route/RealRouteRecorder.kt)、[RealRouteStatistics.kt](../app-ui/src/main/java/com/vincenthzr/locationspoofer/ui/screen/tabs/route/RealRouteStatistics.kt) 和 [RealRouteRecordingService.kt](../app-ui/src/main/java/com/vincenthzr/locationspoofer/ui/screen/tabs/route/RealRouteRecordingService.kt)。
 
 ## 范围与限制
 
@@ -22,6 +22,8 @@
 - 本记录不表示已实现样本中的全部功能，或其未公开的服务端行为。
 
 ## 构建、测试与共存
+
+已确认的模拟器检查：在支持 ARM 转译的模拟器上安装了原版 APK 和共存测试包；原版没有启动，离线检查了共存及测试版覆盖升级后其私有数据标记保留。Android 组件测试共 3 项，覆盖本地草稿的原子写入与损坏处理、录制前台服务暂停与恢复，以及离线 OSM 地图适配器的相机、覆盖物和生命周期。上述结果对应 `bd7b383` 构建，不代表真实 GPS 行走采样、LSPosed Hook 或目标设备兼容性已通过验收。后续构建的验证结果以对应提交的 CI 及设备测试记录为准。
 
 验证入口见 [validation.yml](../.github/workflows/validation.yml)：`./gradlew :app:assembleScopedCoexist` 构建共存测试包，`./gradlew :core-geo:test :xposed:test :app-ui:testScopedDebugUnitTest :core-data:testScopedDebugUnitTest :service:testDebugUnitTest` 运行对应单元测试。道路规划、录制统计及草稿等测试位于 `app-ui/src/test`，横向偏移测试位于 `core-geo/src/test`；测试结果以具体运行记录为准，不等同于设备验证。
 
