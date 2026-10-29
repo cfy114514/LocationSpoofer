@@ -172,6 +172,10 @@ class SettingsRepository(private val settingsManager: SettingsManager) {
             settingsManager.altitude = value
         }
 
+    var barometerSimulation: Boolean
+        get() = settingsManager.barometerSimulation
+        set(value) { settingsManager.barometerSimulation = value }
+
     var altitudeVariationM: Int
         get() = settingsManager.altitudeVariationM
         set(value) {

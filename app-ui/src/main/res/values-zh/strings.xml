@@ -637,4 +637,24 @@
     <string name="collection_route_delete_title">删除采集路线</string>
     <string name="collection_route_delete_message">删除“%1$s”及其全部采样数据？</string>
     <string name="local_collection_records_count">%1$d 个点位 · %2$d 条路线</string>
+    <string name="real_route_title">录制真实路线</string>
+    <string name="real_route_foreground_hint">录制时请保持此页面打开；应用进入后台会自动暂停。暂停前后的点会以直线连接。关闭前请保存。</string>
+    <string name="real_route_stop_spoof">请先停止位置模拟。</string>
+    <string name="real_route_points">已记录 %1$d 个点</string>
+    <string name="real_route_gps_error">请开启 GPS。</string>
+    <string name="real_route_permission_error">需要精确位置权限。</string>
+    <string name="real_route_save_failed">保存失败，请重试。</string>
+    <string name="real_route_name">路线名称</string>
+    <string name="real_route_pause">暂停</string>
+    <string name="real_route_start">开始录制</string>
+    <string name="real_route_resume">继续录制</string>
+    <string name="real_route_save">停止并保存</string>
+    <string name="real_route_close">关闭</string>
+    <string name="real_route_discard_title">放弃录制？</string>
+    <string name="real_route_discard_message">尚未保存的路线点将丢失。</string>
+    <string name="real_route_discard">放弃</string>
+    <string name="real_route_keep">保留</string>
+    <string name="osm_standard_only">OpenStreetMap 仅提供普通地图。</string>
+    <string name="barometer_simulation">模拟气压计</string>
+    <string name="barometer_simulation_desc">模拟期间根据模拟海拔计算气压，需要设备有气压计。</string>
 </resources>

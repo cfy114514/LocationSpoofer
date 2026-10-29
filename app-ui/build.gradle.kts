@@ -96,6 +96,7 @@ dependencies {
     implementation(libs.baidu.map)
     implementation(libs.baidu.location)
     implementation(libs.baidu.search)
+    implementation("org.osmdroid:osmdroid-android:6.1.20")
     implementation(libs.google.maps)
     implementation(libs.google.places)
     implementation(libs.kotlinx.serialization.json)

@@ -57,6 +57,8 @@ import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import com.vincenthzr.locationspoofer.data.motion.MotionController
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.Job
 import org.koin.android.ext.android.inject
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -245,6 +247,12 @@ private fun FloatingJoystickOverlay(
 ) {
     val palette = if (isSystemInDarkTheme()) DarkPalette else LightPalette
     var collapsed by remember { mutableStateOf(false) }
+    var locked by remember { mutableStateOf(false) }
+    var thumb by remember { mutableStateOf(Offset.Zero) }
+    val unlock = { locked = false; thumb = Offset.Zero; onJoystick(0.0, 0f) }
+    LaunchedEffect(state.joystickEnabled, state.hasPendingRecording) {
+        if (!state.joystickEnabled || state.hasPendingRecording) unlock()
+    }
     LaunchedEffect(state.hasPendingRecording) {
         if (state.hasPendingRecording) collapsed = false
         onNeedKeyboard(state.hasPendingRecording)
@@ -294,9 +302,18 @@ private fun FloatingJoystickOverlay(
             return@Column
         }
 
-        Joystick(enabled = state.joystickEnabled, palette = palette, onJoystick = onJoystick)
+        Joystick(enabled = state.joystickEnabled, palette = palette, thumb = thumb,
+            onThumb = { thumb = it }, locked = locked, onLocked = { locked = it },
+            onUnlock = unlock, onJoystick = onJoystick)
+        if (locked) {
+            TextButton(onClick = unlock, modifier = Modifier.fillMaxWidth()) {
+                Text(stringResource(R.string.fj_unlock))
+            }
+        } else if (state.joystickEnabled) {
+            Text(stringResource(R.string.fj_lock_hint), color = palette.textSecondary, fontSize = 11.sp)
+        }
         SpeedSegments(state, palette, onPreset)
-        ActionTabs(state, palette, onPause, onResume, onStartRecording, onStopRecording, onCollapse = { collapsed = true })
+        ActionTabs(state, palette, onPause, onResume, onStartRecording, onStopRecording, onCollapse = { unlock(); collapsed = true })
     }
 }
 
@@ -337,14 +354,15 @@ private fun CollapsedBubble(state: MotionController.State, palette: Palette, dra
 }
 
 @Composable
-private fun Joystick(enabled: Boolean, palette: Palette, onJoystick: (Double, Float) -> Unit) {
+private fun Joystick(enabled: Boolean, palette: Palette, thumb: Offset, onThumb: (Offset) -> Unit,
+    locked: Boolean, onLocked: (Boolean) -> Unit, onUnlock: () -> Unit, onJoystick: (Double, Float) -> Unit) {
     val baseSize = 120.dp
     val thumbSize = 44.dp
     val maxRadiusPx = with(androidx.compose.ui.platform.LocalDensity.current) { ((baseSize - thumbSize) / 2).toPx() }
-    var thumb by remember { mutableStateOf(Offset.Zero) }
-    LaunchedEffect(enabled) {
-        if (!enabled) thumb = Offset.Zero
-    }
+    val scope = rememberCoroutineScope()
+    var lockJob by remember { mutableStateOf<Job?>(null) }
+    val currentLocked by rememberUpdatedState(locked)
+    DisposableEffect(Unit) { onDispose { lockJob?.cancel() } }
 
     Box(
         modifier = Modifier
@@ -355,22 +373,43 @@ private fun Joystick(enabled: Boolean, palette: Palette, onJoystick: (Double, Fl
             .border(1.dp, palette.border.copy(alpha = 0.5f), CircleShape)
             .pointerInput(enabled) {
                 if (!enabled) return@pointerInput
+                var dragOffset = Offset.Zero
+                var gestureLocked = false
                 detectDragGestures(
+                    onDragStart = {
+                        if (currentLocked) onUnlock()
+                        dragOffset = Offset.Zero
+                        gestureLocked = false
+                        lockJob?.cancel()
+                        lockJob = scope.launch {
+                            delay(1000)
+                            if (dragOffset != Offset.Zero) {
+                                gestureLocked = true
+                                onLocked(true)
+                            }
+                        }
+                    },
                     onDragEnd = {
-                        thumb = Offset.Zero
-                        onJoystick(0.0, 0f)
+                        lockJob?.cancel()
+                        if (!gestureLocked) onUnlock()
                     },
                     onDragCancel = {
-                        thumb = Offset.Zero
-                        onJoystick(0.0, 0f)
+                        lockJob?.cancel()
+                        onUnlock()
                     }
                 ) { change, drag ->
                     change.consume()
-                    val raw = thumb + drag
+                    val raw = dragOffset + drag
                     val dist = sqrt(raw.x * raw.x + raw.y * raw.y)
-                    thumb = if (dist <= maxRadiusPx) raw else raw * (maxRadiusPx / dist)
-                    val angle = atan2(thumb.y.toDouble(), thumb.x.toDouble())
-                    val intensity = (sqrt(thumb.x * thumb.x + thumb.y * thumb.y) / maxRadiusPx).coerceIn(0f, 1f)
+                    val next = if (dist <= maxRadiusPx) raw else raw * (maxRadiusPx / dist)
+                    dragOffset = next
+                    onThumb(next)
+                    if (next == Offset.Zero && gestureLocked) {
+                        gestureLocked = false
+                        onLocked(false)
+                    }
+                    val angle = atan2(next.y.toDouble(), next.x.toDouble())
+                    val intensity = (sqrt(next.x * next.x + next.y * next.y) / maxRadiusPx).coerceIn(0f, 1f)
                     onJoystick((Math.toDegrees(angle) + 90 + 360) % 360, intensity)
                 }
             },

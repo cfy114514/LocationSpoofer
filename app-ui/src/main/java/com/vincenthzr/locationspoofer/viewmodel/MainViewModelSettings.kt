@@ -372,6 +372,12 @@ internal fun MainViewModel.setAltitude(altitude: String) {
     _uiState.update { it.copy(altitudeInput = altitude) }
 }
 
+internal fun MainViewModel.setBarometerSimulation(enabled: Boolean) {
+    settingsRepository.barometerSimulation = enabled
+    _uiState.update { it.copy(barometerSimulation = enabled) }
+    viewModelScope.launch { locationRepository.patchConfig { } }
+}
+
 internal fun MainViewModel.setAltitudeVariation(meters: Int) {
     val value = meters.coerceIn(0, AltitudeModel.MAX_VARIATION_M)
     settingsRepository.altitudeVariationM = value

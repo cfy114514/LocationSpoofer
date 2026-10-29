@@ -20,4 +20,6 @@
     <string name="fj_save">Save</string>
     <string name="fj_discard">Discard</string>
     <string name="fj_saved_toast">Route saved</string>
+    <string name="fj_lock_hint">Drag and hold for 1 second to lock direction</string>
+    <string name="fj_unlock">Unlock and stop</string>
 </resources>

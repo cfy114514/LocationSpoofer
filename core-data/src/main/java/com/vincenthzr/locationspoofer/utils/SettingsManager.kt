@@ -126,6 +126,10 @@ class SettingsManager(context: Context) {
         get() = prefs.getBoolean("restart_apps_on_spoof", true)
         set(value) = prefs.edit().putBoolean("restart_apps_on_spoof", value).apply()
 
+    var barometerSimulation: Boolean
+        get() = prefs.getBoolean("barometer_simulation", false)
+        set(value) = prefs.edit().putBoolean("barometer_simulation", value).apply()
+
     var altitude: String
         get() = prefs.getString("altitude", "0.0") ?: "0.0"
         set(value) = prefs.edit().putString("altitude", value).apply()

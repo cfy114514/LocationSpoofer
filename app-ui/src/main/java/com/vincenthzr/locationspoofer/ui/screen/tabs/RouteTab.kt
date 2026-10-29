@@ -23,6 +23,7 @@ import androidx.compose.material.icons.automirrored.rounded.Undo
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -58,6 +59,7 @@ import com.vincenthzr.locationspoofer.ui.components.MapCoverageHelper
 import com.vincenthzr.locationspoofer.viewmodel.prepareRouteSimulationOptions
 import com.vincenthzr.locationspoofer.viewmodel.MainViewModel
 import com.vincenthzr.locationspoofer.viewmodel.setAltitude
+import com.vincenthzr.locationspoofer.viewmodel.setBarometerSimulation
 import com.vincenthzr.locationspoofer.viewmodel.setAltitudeVariation
 import com.vincenthzr.locationspoofer.viewmodel.ManageDataViewModel
 import com.vincenthzr.locationspoofer.viewmodel.addRoutePoint
@@ -105,6 +107,7 @@ fun RouteTab(
     var showConfigDialog by remember { mutableStateOf(false) }
     var showSaveRouteDialog by remember { mutableStateOf(false) }
     var showSavedRoutesDialog by remember { mutableStateOf(false) }
+    var showRealRouteDialog by rememberSaveable { mutableStateOf(false) }
     val isDomestic = viewModel.isDomesticEnvironment()
     var searchQuery by remember { mutableStateOf("") }
     var searchResults by remember { mutableStateOf<List<AppPoiItem>>(emptyList()) }
@@ -439,6 +442,10 @@ fun RouteTab(
                             onClick = { showMapTypeDialog = true }
                         )
                         RouteControlButton(
+                            icon = Icons.Rounded.FiberManualRecord,
+                            onClick = { showRealRouteDialog = true }
+                        )
+                        RouteControlButton(
                             icon = Icons.Rounded.Bookmarks,
                             onClick = { showSavedRoutesDialog = true }
                         )
@@ -625,6 +632,7 @@ fun RouteTab(
             onToggleJitter = viewModel::toggleEnableJitter,
             onAltitudeChange = viewModel::setAltitude,
             onAltitudeVariationChange = viewModel::setAltitudeVariation,
+            onBarometerChange = viewModel::setBarometerSimulation,
             onSatelliteCountChange = viewModel::setSatelliteCount
         )
     }
@@ -675,6 +683,10 @@ fun RouteTab(
             viewModel = viewModel,
             onDismiss = { showSaveRouteDialog = false }
         )
+    }
+
+    if (showRealRouteDialog) {
+        RealRouteRecordingDialog(viewModel, uiState.isSpoofingActive) { showRealRouteDialog = false }
     }
 
     if (showSavedRoutesDialog) {

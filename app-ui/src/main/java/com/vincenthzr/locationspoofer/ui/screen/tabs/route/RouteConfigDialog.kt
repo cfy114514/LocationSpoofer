@@ -50,6 +50,7 @@ fun RouteConfigDialog(
     onToggleJitter: () -> Unit = {},
     onAltitudeChange: (String) -> Unit = {},
     onAltitudeVariationChange: (Int) -> Unit = {},
+    onBarometerChange: (Boolean) -> Unit = {},
     onSatelliteCountChange: (String) -> Unit = {}
 ) {
     Dialog(
@@ -505,6 +506,8 @@ fun RouteConfigDialog(
                         altitudeInput = uiState.altitudeInput,
                         variationM = uiState.altitudeVariationM,
                         onAltitudeChange = onAltitudeChange,
+                        barometerSimulation = uiState.barometerSimulation,
+                        onBarometerChange = onBarometerChange,
                         onVariationChange = onAltitudeVariationChange
                     )
 

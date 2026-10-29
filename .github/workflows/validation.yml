@@ -1,0 +1,20 @@
+name: Validate changes
+on:
+  push:
+    branches: ["codex/sync-local-features"]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: android-actions/setup-android@v3
+      - run: chmod +x gradlew
+      - run: ./gradlew --no-daemon :app:assembleScopedDebug :core-geo:test :xposed:test

@@ -34,6 +34,7 @@ fun StartSpoofingDialog(
     onToggleRestartApps: () -> Unit,
     onAltitudeChange: (String) -> Unit,
     onAltitudeVariationChange: (Int) -> Unit,
+    onBarometerChange: (Boolean) -> Unit,
     onSatelliteCountChange: (String) -> Unit
 ) {
     LocalizedDialog(
@@ -205,6 +206,8 @@ fun StartSpoofingDialog(
                         altitudeInput = uiState.altitudeInput,
                         variationM = uiState.altitudeVariationM,
                         onAltitudeChange = onAltitudeChange,
+                        barometerSimulation = uiState.barometerSimulation,
+                        onBarometerChange = onBarometerChange,
                         onVariationChange = onAltitudeVariationChange
                     )
                     Spacer(Modifier.height(8.dp))

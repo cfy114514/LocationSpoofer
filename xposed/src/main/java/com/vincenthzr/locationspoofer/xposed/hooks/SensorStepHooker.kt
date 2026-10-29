@@ -122,7 +122,7 @@ object SensorStepHooker {
 
                         if (listener != null) {
                             val targetSensor = sensor ?: getOrCreateMockSensor(Sensor.TYPE_STEP_COUNTER, classLoader)
-                            if (targetSensor != null && (targetSensor.type == Sensor.TYPE_STEP_COUNTER || targetSensor.type == Sensor.TYPE_STEP_DETECTOR || targetSensor.type == Sensor.TYPE_ACCELEROMETER)) {
+                            if (targetSensor != null && (targetSensor.type == Sensor.TYPE_STEP_COUNTER || targetSensor.type == Sensor.TYPE_STEP_DETECTOR || targetSensor.type == Sensor.TYPE_ACCELEROMETER || targetSensor.type == Sensor.TYPE_PRESSURE)) {
                                 val entry = CapturedSensorListener(listener, targetSensor, handler)
                                 if (!capturedListeners.any { it.listener === listener && it.sensor?.type == targetSensor.type }) {
                                     capturedListeners.add(entry)
@@ -236,6 +236,11 @@ object SensorStepHooker {
                     val event = chain.args.firstOrNull() as? SensorEvent
                     if (event != null && event.sensor != null) {
                         val config = (XposedHelpers.module as? LocationHooker)?.readConfig()
+                        if (config != null && config.optBoolean("active", false) && event.sensor.type == Sensor.TYPE_PRESSURE && event.values.isNotEmpty() && config.optBoolean("barometer_simulation", false)) {
+                            val now = System.currentTimeMillis()
+                            val altitude = RouteEngine.realisticAltitude(config, now)
+                            PressureModel.pressureHpa(altitude, now)?.let { event.values[0] = it }
+                        }
                         if (config != null && config.optBoolean("active", false) && config.optBoolean("enable_step_simulation", true)) {
                             val speed = config.optDouble("speed_m_s", 0.0)
                             if (event.sensor.type == Sensor.TYPE_STEP_COUNTER && event.values.isNotEmpty()) {

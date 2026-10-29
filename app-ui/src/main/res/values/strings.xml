@@ -637,4 +637,24 @@ Error details: %s</string>
     <string name="collection_route_delete_title">Delete collected route</string>
     <string name="collection_route_delete_message">Delete “%1$s” and all its collected samples?</string>
     <string name="local_collection_records_count">%1$d points · %2$d routes</string>
+    <string name="real_route_title">Record a real route</string>
+    <string name="real_route_foreground_hint">Keep this screen open while recording. Recording pauses when the app goes to the background. Points recorded after a pause are joined by a straight line. Save before closing.</string>
+    <string name="real_route_stop_spoof">Stop location simulation before recording.</string>
+    <string name="real_route_points">Recorded points: %1$d</string>
+    <string name="real_route_gps_error">Turn on GPS to record.</string>
+    <string name="real_route_permission_error">Precise location permission is required.</string>
+    <string name="real_route_save_failed">Could not save the route. Try again.</string>
+    <string name="real_route_name">Route name</string>
+    <string name="real_route_pause">Pause</string>
+    <string name="real_route_start">Start</string>
+    <string name="real_route_resume">Resume</string>
+    <string name="real_route_save">Stop and save</string>
+    <string name="real_route_close">Close</string>
+    <string name="real_route_discard_title">Discard recording?</string>
+    <string name="real_route_discard_message">Your unsaved points will be lost.</string>
+    <string name="real_route_discard">Discard</string>
+    <string name="real_route_keep">Keep</string>
+    <string name="osm_standard_only">OpenStreetMap provides the standard map only.</string>
+    <string name="barometer_simulation">Simulate barometer</string>
+    <string name="barometer_simulation_desc">Uses simulated altitude during simulation; requires a physical barometer.</string>
 </resources>

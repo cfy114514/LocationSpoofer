@@ -161,6 +161,7 @@ data class AppState(
     val enableJitter: Boolean = true,
     val restartAppsOnSpoof: Boolean = true,
     val altitudeInput: String = "0.0",
+    val barometerSimulation: Boolean = false,
     val altitudeVariationM: Int = AltitudeModel.DEFAULT_VARIATION_M,
     val satelliteCountInput: String = "20",
     val canMockWifi: Boolean = false,
