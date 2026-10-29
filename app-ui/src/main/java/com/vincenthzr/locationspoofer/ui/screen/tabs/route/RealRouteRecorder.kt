@@ -2,6 +2,7 @@ package com.vincenthzr.locationspoofer.ui.screen.tabs.route
 
 import android.Manifest
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.location.Location
 import android.location.LocationListener
@@ -13,6 +14,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.vincenthzr.locationspoofer.data.model.RoutePoint
+import com.vincenthzr.locationspoofer.data.state.SpoofingState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -21,11 +23,13 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.concurrent.atomic.AtomicLong
 
-/** Foreground-only GPS recording. The caller owns and closes this listener. */
+/** GPS recorder shared with its location foreground service. */
 internal class RealRouteRecorder private constructor(context: Context) : LocationListener {
     private val manager = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
     private val appContext = context.applicationContext
     var recording by mutableStateOf(false)
+        private set
+    var starting by mutableStateOf(false)
         private set
     private val draft = RealRouteDraft(context.applicationContext)
     private val writes = Channel<Pair<Long, List<RoutePoint>>>(Channel.CONFLATED)
@@ -69,6 +73,7 @@ internal class RealRouteRecorder private constructor(context: Context) : Locatio
 
 
     fun start(): Boolean {
+        if (SpoofingState.isActive) { error = "spoofing"; return false }
         if (unreadableDraft) { storageError = true; return false }
         if (atLimit) { error = "limit"; return false }
         if (ContextCompat.checkSelfPermission(appContext, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
@@ -79,31 +84,57 @@ internal class RealRouteRecorder private constructor(context: Context) : Locatio
             error = "gps"
             return false
         }
+        if (recording || starting) return true
         return try {
-            // Do not use cached locations: only fixes delivered after starting the session.
-            manager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1000L, 0f, this, Looper.getMainLooper())
-            recording = true
-            error = null
+            starting = true
+            ContextCompat.startForegroundService(appContext, Intent(appContext, RealRouteRecordingService::class.java))
             true
-        } catch (_: SecurityException) {
-            error = "permission"
-            false
-        } catch (_: IllegalArgumentException) {
-            error = "gps"
+        } catch (_: RuntimeException) {
+            starting = false
+            error = "service"
             false
         }
     }
 
-    fun pause() {
+    /** Called by the service only after it has entered the foreground. */
+    fun startGps(): Boolean {
+        if (SpoofingState.isActive) { starting = false; error = "spoofing"; return false }
+        if (!starting) return false
+        return try {
+            manager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1000L, 0f, this, Looper.getMainLooper())
+            starting = false
+            recording = true
+            error = null
+            true
+        } catch (_: SecurityException) {
+            starting = false; error = "permission"; false
+        } catch (_: IllegalArgumentException) {
+            starting = false; error = "gps"; false
+        }
+    }
+
+    fun serviceFailed() { starting = false; error = "service" }
+    fun serviceStopped() {
         try { manager.removeUpdates(this) } catch (_: SecurityException) { }
+        starting = false
         recording = false
-        // Avoid treating time spent paused as a normal sampling interval.
         last = null
+    }
+    fun pause() {
+        serviceStopped()
+        appContext.stopService(Intent(appContext, RealRouteRecordingService::class.java))
+    }
+
+    private fun stopWithReason(reason: String) {
+        pause()
+        error = reason
+        RealRouteRecordingService.notifyStopped(appContext, reason)
     }
 
     fun clear() { pause(); points = emptyList(); error = null; hasGap = false; persist() }
 
     override fun onLocationChanged(location: Location) {
+        if (SpoofingState.isActive) { pause(); error = "spoofing"; return }
         if (!recording || !location.hasAccuracy() || !location.accuracy.isFinite() || location.accuracy > 35f || location.accuracy <= 0f) return
         if (location.latitude !in -90.0..90.0 || location.longitude !in -180.0..180.0) return
         if (android.os.Build.VERSION.SDK_INT >= 31 && location.isMock) return
@@ -123,7 +154,8 @@ internal class RealRouteRecorder private constructor(context: Context) : Locatio
         last = Location(location)
         points = points + realGpsRoutePoint(location.latitude, location.longitude)
         persist()
-        if (atLimit) { pause(); error = "limit" }
+        RealRouteRecordingService.update(appContext, points.size)
+        if (atLimit) stopWithReason("limit")
     }
     companion object {
         const val MAX_POINTS = 10_000
@@ -133,7 +165,7 @@ internal class RealRouteRecorder private constructor(context: Context) : Locatio
         }
     }
     override fun onProviderDisabled(provider: String) {
-        if (provider == LocationManager.GPS_PROVIDER && recording) { pause(); error = "gps" }
+        if (provider == LocationManager.GPS_PROVIDER && recording) stopWithReason("gps")
     }
 
     @Deprecated("Deprecated in Android") override fun onStatusChanged(provider: String?, status: Int, extras: android.os.Bundle?) = Unit

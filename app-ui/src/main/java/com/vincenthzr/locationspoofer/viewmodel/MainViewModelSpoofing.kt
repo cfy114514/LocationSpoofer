@@ -54,6 +54,7 @@ internal fun MainViewModel.startSpoofing() {
 
         val updatedState = _uiState.value
         val now = System.currentTimeMillis()
+        if (realRouteRecorder.recording || realRouteRecorder.starting) realRouteRecorder.pause()
         locationRepository.startSpoofing(
             context, lat, lng,
             "STILL", 0f, now,

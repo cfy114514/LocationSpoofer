@@ -65,7 +65,9 @@ class RootManager(private val ownPackageName: String = "com.vincenthzr.locations
     /** Force-stops selected apps so their next launch loads the current module and configuration. */
     suspend fun forceStopApps(packages: List<String>): List<Pair<String, Boolean>> =
         withContext(Dispatchers.IO) {
-            packages.map { pkg -> pkg to (executeCommand("am force-stop $pkg") != "ERROR") }
+            packages.map { pkg ->
+                pkg to (canForceStopPackage(ownPackageName, pkg) && executeCommand("am force-stop $pkg") != "ERROR")
+            }
         }
 
     suspend fun grantMockLocation(): Boolean = withContext(Dispatchers.IO) {
@@ -112,3 +114,8 @@ class RootManager(private val ownPackageName: String = "com.vincenthzr.locations
         }
     }
 }
+
+// The test installation must never force-stop either LocationSpoofer installation.
+internal fun canForceStopPackage(ownPackageName: String, targetPackageName: String): Boolean =
+    ownPackageName != "com.vincenthzr.locationspoofer.cfytest" ||
+        targetPackageName !in setOf("com.vincenthzr.locationspoofer", ownPackageName)

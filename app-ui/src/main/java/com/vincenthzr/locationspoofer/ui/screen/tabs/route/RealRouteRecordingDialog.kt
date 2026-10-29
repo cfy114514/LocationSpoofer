@@ -1,6 +1,11 @@
 package com.vincenthzr.locationspoofer.ui.screen.tabs.route
 
 import android.Manifest
+import android.app.NotificationManager
+import android.content.pm.PackageManager
+import androidx.core.app.NotificationManagerCompat
+import android.os.Build
+import androidx.core.content.ContextCompat
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
@@ -9,6 +14,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
@@ -21,6 +27,20 @@ import com.vincenthzr.locationspoofer.viewmodel.saveRealRoute
 internal fun RealRouteRecordingDialog(viewModel: MainViewModel, spoofing: Boolean, onDismiss: () -> Unit) {
     val recorder = viewModel.realRouteRecorder
     val owner = LocalLifecycleOwner.current
+    val context = LocalContext.current
+    fun notificationsAllowed(): Boolean {
+        if (Build.VERSION.SDK_INT >= 33 && ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) return false
+        if (!NotificationManagerCompat.from(context).areNotificationsEnabled()) return false
+        val channel = (context.getSystemService(android.content.Context.NOTIFICATION_SERVICE) as NotificationManager)
+            .getNotificationChannel("real_route_recording")
+        return channel == null || channel.importance != NotificationManager.IMPORTANCE_NONE
+    }
+    var notificationAllowed by remember { mutableStateOf(notificationsAllowed()) }
+    DisposableEffect(owner, context) {
+        val observer = LifecycleEventObserver { _, event -> if (event == Lifecycle.Event.ON_RESUME) notificationAllowed = notificationsAllowed() }
+        owner.lifecycle.addObserver(observer)
+        onDispose { owner.lifecycle.removeObserver(observer) }
+    }
     var name by rememberSaveable { mutableStateOf("") }
     var saving by remember { mutableStateOf(false) }
     var saveFailed by remember { mutableStateOf(false) }
@@ -34,19 +54,12 @@ internal fun RealRouteRecordingDialog(viewModel: MainViewModel, spoofing: Boolea
         permissionDenied = !granted
         if (granted && !spoofing && owner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) recorder.start()
     }
-    DisposableEffect(owner, recorder) {
-        val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_STOP) recorder.pause()
-        }
-        owner.lifecycle.addObserver(observer)
-        onDispose { owner.lifecycle.removeObserver(observer); recorder.pause() }
-    }
     LaunchedEffect(spoofing) { if (spoofing) recorder.pause() }
     LaunchedEffect(clearing, recorder.draftPending, recorder.storageError) {
         if (clearing && !recorder.draftPending && !recorder.storageError) { clearing = false; onDismiss() }
     }
     val dismiss = {
-        if (recorder.points.isNotEmpty()) confirmDiscard = true else { recorder.pause(); onDismiss() }
+        if (recorder.points.isNotEmpty()) confirmDiscard = true else onDismiss()
     }
     AlertDialog(
         onDismissRequest = { if (!saving && !clearing) dismiss() },
@@ -54,12 +67,15 @@ internal fun RealRouteRecordingDialog(viewModel: MainViewModel, spoofing: Boolea
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(stringResource(R.string.real_route_foreground_hint))
+                if (!notificationAllowed) Text(stringResource(R.string.real_route_notification_denied), color = MaterialTheme.colorScheme.error)
                 if (spoofing) Text(stringResource(R.string.real_route_stop_spoof), color = MaterialTheme.colorScheme.error)
                 Text(stringResource(R.string.real_route_points, recorder.points.size))
                 if (permissionDenied) Text(stringResource(R.string.real_route_permission_error), color = MaterialTheme.colorScheme.error)
                 if (recorder.error != null) Text(stringResource(when (recorder.error) {
                     "gps" -> R.string.real_route_gps_error
                     "limit" -> R.string.real_route_limit
+                    "service" -> R.string.real_route_service_error
+                    "spoofing" -> R.string.real_route_stop_spoof
                     else -> R.string.real_route_permission_error
                 }), color = MaterialTheme.colorScheme.error)
                 if (recorder.hasGap) {
@@ -78,7 +94,7 @@ internal fun RealRouteRecordingDialog(viewModel: MainViewModel, spoofing: Boolea
                     if (recorder.recording) {
                         OutlinedButton(onClick = recorder::pause) { Text(stringResource(R.string.real_route_pause)) }
                     } else {
-                        OutlinedButton(enabled = !spoofing && !saving && !clearing && !recorder.unreadableDraft && !recorder.atLimit, onClick = {
+                        OutlinedButton(enabled = !spoofing && !saving && !clearing && !recorder.starting && !recorder.unreadableDraft && !recorder.atLimit, onClick = {
                             if (recorder.points.isEmpty()) permission.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
                             else confirmResume = true
                         }) {
@@ -123,6 +139,6 @@ internal fun RealRouteRecordingDialog(viewModel: MainViewModel, spoofing: Boolea
         title = { Text(stringResource(R.string.real_route_discard_title)) },
         text = { Text(stringResource(R.string.real_route_discard_message)) },
         confirmButton = { TextButton(onClick = { recorder.clear(); clearing = true; confirmDiscard = false }) { Text(stringResource(R.string.real_route_discard)) } },
-        dismissButton = { TextButton(enabled = !recorder.draftPending && !recorder.storageError, onClick = { recorder.pause(); confirmDiscard = false; onDismiss() }) { Text(stringResource(R.string.real_route_keep)) } }
+        dismissButton = { TextButton(enabled = !recorder.draftPending && !recorder.storageError, onClick = { confirmDiscard = false; onDismiss() }) { Text(stringResource(R.string.real_route_keep)) } }
     )
 }

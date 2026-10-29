@@ -10,6 +10,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 class SettingsManager(context: Context) {
+    private val defaultRestartAppsOnSpoof = context.packageName != "com.vincenthzr.locationspoofer.cfytest"
     private val prefs: SharedPreferences =
         context.getSharedPreferences("app_settings", Context.MODE_PRIVATE)
 
@@ -123,7 +124,7 @@ class SettingsManager(context: Context) {
 
     /** 开始模拟时是否强制重启已勾选作用域的目标 App，让它们加载当前模块并订阅框架配置 */
     var restartAppsOnSpoof: Boolean
-        get() = prefs.getBoolean("restart_apps_on_spoof", true)
+        get() = prefs.getBoolean("restart_apps_on_spoof", defaultRestartAppsOnSpoof)
         set(value) = prefs.edit().putBoolean("restart_apps_on_spoof", value).apply()
 
     var barometerSimulation: Boolean

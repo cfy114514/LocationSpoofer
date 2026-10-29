@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.vincenthzr.locationspoofer.data.model.GithubRelease
 import com.vincenthzr.locationspoofer.ui.BuildConfig
+import com.vincenthzr.locationspoofer.ui.R
 import com.vincenthzr.locationspoofer.utils.UpdateManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -36,7 +37,16 @@ class UpdateViewModel(private val context: Context) : ViewModel() {
     private val updateManager = UpdateManager(context)
     private val okHttpClient = OkHttpClient()
 
+    private val isCoexistBuild: Boolean get() = context.packageName == "com.vincenthzr.locationspoofer.cfytest"
+
+    private fun blockCoexistUpdater(): Boolean {
+        if (!isCoexistBuild) return false
+        _uiState.update { it.copy(isLoading = false, error = context.getString(R.string.coexist_updater_disabled)) }
+        return true
+    }
+
     fun fetchReleases() {
+        if (blockCoexistUpdater()) return
         _uiState.update { it.copy(isLoading = true, error = null) }
         viewModelScope.launch(Dispatchers.IO) {
             try {
@@ -112,6 +122,7 @@ class UpdateViewModel(private val context: Context) : ViewModel() {
     }
 
     fun startDownload(url: String, versionName: String) {
+        if (blockCoexistUpdater()) return
         val fileName = "LocationSpoofer_$versionName.apk"
         val downloadId = updateManager.downloadApk(url, fileName)
         _uiState.update {
@@ -149,6 +160,7 @@ class UpdateViewModel(private val context: Context) : ViewModel() {
     }
 
     fun installApk() {
+        if (blockCoexistUpdater()) return
         _uiState.value.activeDownloadId?.let { downloadId ->
             updateManager.installApk(downloadId)
         }
