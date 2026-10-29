@@ -650,6 +650,9 @@
     <string name="real_route_start">开始录制</string>
     <string name="real_route_resume">继续录制</string>
     <string name="real_route_save">停止并保存</string>
+    <string name="real_route_save_use">保存并使用路线</string>
+    <string name="real_route_use_unavailable">请停止当前模拟，或等待路线规划结束后再载入录制路线。</string>
+    <string name="real_route_saved_but_not_loaded">路线已保存。请停止当前模拟或等待路线规划结束后再载入。</string>
     <string name="real_route_close">关闭</string>
     <string name="real_route_discard_title">放弃录制？</string>
     <string name="real_route_discard_message">尚未保存的路线点将丢失。</string>

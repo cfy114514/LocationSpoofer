@@ -205,7 +205,7 @@ fun RouteTab(
                 idx == routePoints.lastIndex && routePoints.size > 1 -> MarkerType.RED
                 else -> MarkerType.DEFAULT
             }
-            if (uiState.useRealRoute && uiState.routePlanStage == RoutePlanStage.RUNNING && type == MarkerType.DEFAULT) {
+            if ((routePoints.size > 200 || (uiState.useRealRoute && uiState.routePlanStage == RoutePlanStage.RUNNING)) && type == MarkerType.DEFAULT) {
                 return@forEachIndexed
             }
             val startBadge = context.getString(R.string.route_start_badge)

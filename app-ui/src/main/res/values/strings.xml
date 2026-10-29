@@ -650,6 +650,9 @@ Error details: %s</string>
     <string name="real_route_start">Start</string>
     <string name="real_route_resume">Resume</string>
     <string name="real_route_save">Stop and save</string>
+    <string name="real_route_save_use">Save and use route</string>
+    <string name="real_route_use_unavailable">Stop the active simulation or wait for route planning before loading a recording.</string>
+    <string name="real_route_saved_but_not_loaded">Route saved. Stop the active simulation or route planning before loading it.</string>
     <string name="real_route_close">Close</string>
     <string name="real_route_discard_title">Discard recording?</string>
     <string name="real_route_discard_message">Your unsaved points will be lost.</string>
