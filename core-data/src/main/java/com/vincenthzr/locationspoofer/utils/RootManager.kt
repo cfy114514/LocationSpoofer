@@ -115,7 +115,7 @@ class RootManager(private val ownPackageName: String = "com.vincenthzr.locations
     }
 }
 
-// The test installation must never force-stop either LocationSpoofer installation.
+// Protect the current and historical application IDs from the test installation.
 internal fun canForceStopPackage(ownPackageName: String, targetPackageName: String): Boolean =
     ownPackageName != "com.vincenthzr.locationspoofer.cfytest" ||
-        targetPackageName !in setOf("com.vincenthzr.locationspoofer", ownPackageName)
+        targetPackageName !in setOf("com.vincenthzr.locationspoofer", "com.suseoaa.locationspoofer", ownPackageName)

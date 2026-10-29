@@ -8,6 +8,7 @@ class CoexistForceStopTest {
     @Test fun testBuildNeverForceStopsEitherInstallation() {
         val test = "com.vincenthzr.locationspoofer.cfytest"
         assertFalse(canForceStopPackage(test, "com.vincenthzr.locationspoofer"))
+        assertFalse(canForceStopPackage(test, "com.suseoaa.locationspoofer"))
         assertFalse(canForceStopPackage(test, test))
         assertTrue(canForceStopPackage(test, "example.target"))
     }
