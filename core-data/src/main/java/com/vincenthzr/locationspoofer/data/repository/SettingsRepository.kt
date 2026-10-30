@@ -6,6 +6,10 @@ import com.vincenthzr.locationspoofer.utils.SettingsManager
 
 class SettingsRepository(private val settingsManager: SettingsManager) {
 
+    var fixedJoystickEnabled: Boolean
+        get() = settingsManager.fixedJoystickEnabled
+        set(value) { settingsManager.fixedJoystickEnabled = value }
+
     fun getSavedLocations(): List<SavedLocation> = settingsManager.getSavedLocations()
 
     fun setSavedLocations(locations: List<SavedLocation>) = settingsManager.saveLocationList(locations)
@@ -171,6 +175,10 @@ class SettingsRepository(private val settingsManager: SettingsManager) {
         set(value) {
             settingsManager.altitude = value
         }
+
+    var barometerSimulation: Boolean
+        get() = settingsManager.barometerSimulation
+        set(value) { settingsManager.barometerSimulation = value }
 
     var altitudeVariationM: Int
         get() = settingsManager.altitudeVariationM

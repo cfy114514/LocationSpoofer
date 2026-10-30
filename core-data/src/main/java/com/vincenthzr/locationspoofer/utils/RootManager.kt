@@ -5,7 +5,7 @@ import com.vincenthzr.locationspoofer.data.model.RootSolution
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-class RootManager {
+class RootManager(private val ownPackageName: String = "com.vincenthzr.locationspoofer") {
 
     companion object {
         private const val TAG = "LocationSpoofer"
@@ -18,7 +18,7 @@ class RootManager {
             hasRoot
         }
 
-    suspend fun applyRootBackgroundExemptions(packageName: String = "com.vincenthzr.locationspoofer"): Boolean =
+    suspend fun applyRootBackgroundExemptions(packageName: String = ownPackageName): Boolean =
         withContext(Dispatchers.IO) {
             val cmds = """
                 dumpsys deviceidle whitelist +$packageName 2>/dev/null || true
@@ -65,18 +65,20 @@ class RootManager {
     /** Force-stops selected apps so their next launch loads the current module and configuration. */
     suspend fun forceStopApps(packages: List<String>): List<Pair<String, Boolean>> =
         withContext(Dispatchers.IO) {
-            packages.map { pkg -> pkg to (executeCommand("am force-stop $pkg") != "ERROR") }
+            packages.map { pkg ->
+                pkg to (canForceStopPackage(ownPackageName, pkg) && executeCommand("am force-stop $pkg") != "ERROR")
+            }
         }
 
     suspend fun grantMockLocation(): Boolean = withContext(Dispatchers.IO) {
         val result =
-            executeCommand("appops set com.vincenthzr.locationspoofer android:mock_location allow")
+            executeCommand("appops set $ownPackageName android:mock_location allow")
         result != "ERROR"
     }
 
     suspend fun revokeMockLocation(): Boolean = withContext(Dispatchers.IO) {
         val result =
-            executeCommand("appops set com.vincenthzr.locationspoofer android:mock_location default")
+            executeCommand("appops set $ownPackageName android:mock_location default")
         result != "ERROR"
     }
 
@@ -112,3 +114,8 @@ class RootManager {
         }
     }
 }
+
+// Protect the current and historical application IDs from the test installation.
+internal fun canForceStopPackage(ownPackageName: String, targetPackageName: String): Boolean =
+    ownPackageName != "com.vincenthzr.locationspoofer.cfytest" ||
+        targetPackageName !in setOf("com.vincenthzr.locationspoofer", "com.suseoaa.locationspoofer", ownPackageName)

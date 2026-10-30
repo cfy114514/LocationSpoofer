@@ -1,5 +1,5 @@
 package com.vincenthzr.locationspoofer.data.model
 
 enum class MapEngine {
-    AUTO, AMAP, BAIDU, GOOGLE
+    AUTO, AMAP, BAIDU, GOOGLE, OSM
 }

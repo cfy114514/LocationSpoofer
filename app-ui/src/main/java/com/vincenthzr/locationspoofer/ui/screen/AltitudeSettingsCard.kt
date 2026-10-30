@@ -12,6 +12,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -38,6 +39,8 @@ fun AltitudeSettingsCard(
     variationM: Int,
     onAltitudeChange: (String) -> Unit,
     onVariationChange: (Int) -> Unit,
+    barometerSimulation: Boolean,
+    onBarometerChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier
 ) {
     var slider by remember(variationM) { mutableFloatStateOf(variationM.toFloat()) }
@@ -133,6 +136,13 @@ fun AltitudeSettingsCard(
                 fontSize = 11.sp,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f)
             )
+            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(stringResource(R.string.barometer_simulation), fontSize = 14.sp)
+                    Text(stringResource(R.string.barometer_simulation_desc), fontSize = 11.sp)
+                }
+                Switch(checked = barometerSimulation, onCheckedChange = onBarometerChange)
+            }
         }
     }
 }

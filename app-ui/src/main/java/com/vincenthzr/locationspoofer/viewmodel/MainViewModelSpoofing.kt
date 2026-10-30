@@ -36,6 +36,8 @@ internal fun MainViewModel.startSpoofing() {
         return
     }
 
+    if (state.fixedJoystickEnabled && !ensureOverlayPermission()) return
+
     settingsRepository.isSpoofingActive = true
     settingsRepository.lastSpoofedLat = lat.toString()
     settingsRepository.lastSpoofedLng = lng.toString()
@@ -54,6 +56,7 @@ internal fun MainViewModel.startSpoofing() {
 
         val updatedState = _uiState.value
         val now = System.currentTimeMillis()
+        realRouteRecorder.pauseForSimulation()
         locationRepository.startSpoofing(
             context, lat, lng,
             "STILL", 0f, now,
@@ -68,6 +71,11 @@ internal fun MainViewModel.startSpoofing() {
             updatedState.enableJitter
         )
         motionController.onStaticStarted(lat, lng)
+        if (state.fixedJoystickEnabled) {
+            showFixedJoystickIfAvailable()
+        } else if (locationRepository.isFloatingJoystickShowing && !motionController.state.value.hasPendingRecording) {
+            locationRepository.setFloatingJoystickVisible(context, false)
+        }
 
         // 稍作等待，确保 root shell 完全同步到磁盘
         kotlinx.coroutines.delay(200)
@@ -137,7 +145,7 @@ internal fun MainViewModel.stopSpoofing() {
 }
 
 /**
- * 悬浮摇杆只服务于"摇杆手动控制"的路线模拟，没有"显示在其他应用上层"权限时无法操作。
+ * 悬浮摇杆需要"显示在其他应用上层"权限。
  * 缺权限时提示并跳到系统授权页，返回 false，由调用方放弃这次启动；用户授权回来后重新开始即可。
  */
 internal fun MainViewModel.ensureOverlayPermission(): Boolean {
@@ -154,6 +162,25 @@ internal fun MainViewModel.ensureOverlayPermission(): Boolean {
         ).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
     )
     return false
+}
+
+internal fun MainViewModel.setFixedJoystickEnabled(enabled: Boolean) {
+    settingsRepository.fixedJoystickEnabled = enabled
+    _uiState.update { it.copy(fixedJoystickEnabled = enabled) }
+}
+
+/** 恢复时不主动弹权限页；用户可在下次启动时重新授权。 */
+internal fun MainViewModel.showFixedJoystickIfAvailable(reportFailure: Boolean = true) {
+    if (locationRepository.isFloatingJoystickShowing) return
+    if (!android.provider.Settings.canDrawOverlays(context)) {
+        if (reportFailure) android.widget.Toast.makeText(context, R.string.fixed_joystick_open_failed, android.widget.Toast.LENGTH_LONG).show()
+        return
+    }
+    try {
+        locationRepository.setFloatingJoystickVisible(context, true)
+    } catch (_: RuntimeException) {
+        if (reportFailure) android.widget.Toast.makeText(context, R.string.fixed_joystick_open_failed, android.widget.Toast.LENGTH_LONG).show()
+    }
 }
 
 // 路线规划状态机

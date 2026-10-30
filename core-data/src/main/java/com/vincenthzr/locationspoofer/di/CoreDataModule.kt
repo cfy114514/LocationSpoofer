@@ -19,7 +19,7 @@ import org.koin.android.ext.koin.androidContext
 import org.koin.dsl.module
 
 val coreDataModule = module {
-    single { RootManager() }
+    single { RootManager(androidContext().packageName) }
     single { ConfigManager(androidContext(), get()) }
     single { LSPosedManager() }
     single { SettingsManager(androidContext()) }

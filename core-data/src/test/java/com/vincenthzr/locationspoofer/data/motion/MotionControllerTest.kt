@@ -5,6 +5,8 @@ import com.vincenthzr.locationspoofer.utils.CoordinateUtils.LatLng
 import com.vincenthzr.locationspoofer.utils.GeoMath
 import java.util.Collections
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.withTimeout
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -64,6 +66,29 @@ class MotionControllerTest {
     private fun advance(ms: Long) {
         now += ms
         controller.tick(now)
+    }
+
+    @Test
+    fun `fixed simulation joystick moves and release and restart stop movement`() {
+        controller.onStaticStarted(start.lat, start.lng)
+        controller.setSpeedPreset(walking)
+        controller.tick(now)
+        assertTrue(controller.state.value.joystickEnabled)
+        assertFalse(controller.state.value.hasRoute)
+        controller.joystick(90.0, 1f)
+        repeat(5) { advance(1_000) }
+        assertEquals(10.0, GeoMath.distance(start, here()), 0.05)
+        controller.joystick(0.0, 0f)
+        val released = here()
+        advance(1_000)
+        assertEquals(0.0, GeoMath.distance(released, here()), 1e-6)
+        awaitUntil { sink.manual.lastOrNull()?.speed == 0.0 }
+        controller.onStopped()
+        assertFalse(controller.state.value.joystickEnabled)
+        controller.onStaticStarted(start.lat, start.lng)
+        controller.tick(now)
+        advance(1_000)
+        assertEquals(0.0, GeoMath.distance(start, here()), 1e-6)
     }
 
     @Test
@@ -196,6 +221,39 @@ class MotionControllerTest {
 
         advance(5_000) // 然后沿路线正北前进 10 米
         assertEquals(10.0, GeoMath.distance(start, here()), 0.1)
+    }
+
+    @Test
+    fun `latest route write follows a suspended manual write`() = runBlocking {
+        val manualStarted = CompletableDeferred<Unit>()
+        val releaseManual = CompletableDeferred<Unit>()
+        val routeWritten = CompletableDeferred<Double>()
+        val blockedSink = object : MotionController.MotionSink {
+            override suspend fun writeManual(lat: Double, lng: Double, bearing: Float, speedMs: Double, timestamp: Long) {
+                manualStarted.complete(Unit)
+                releaseManual.await()
+            }
+            override suspend fun writeRoute(lat: Double, lng: Double, bearing: Float, preset: MotionController.SpeedPreset,
+                points: List<RoutePoint>, startTimestamp: Long, distanceOffset: Double, stopAtDestination: Boolean) {
+                routeWritten.complete(distanceOffset)
+            }
+            override suspend fun saveRoute(name: String, points: List<RoutePoint>) = Unit
+        }
+        var time = 1_000_000L
+        val motion = MotionController(blockedSink, { 0 to 0 }, clock = { time }, autoTick = false)
+        motion.onRouteStarted(listOf(RoutePoint(start.lat, start.lng), RoutePoint(end.lat, end.lng)),
+            walking, stopAtDestination = false, startTimestamp = time, startPaused = true)
+        motion.tick(time)
+        motion.joystick(90.0, 1f)
+        time += 1_000
+        motion.tick(time)
+        withTimeout(2_000) { manualStarted.await() }
+        motion.joystick(0.0, 0f)
+        motion.resume()
+        repeat(3) { if (motion.state.value.returning) { time += 1_000; motion.tick(time) } }
+        assertEquals(MotionController.Mode.ROUTE, motion.state.value.mode)
+        releaseManual.complete(Unit)
+        assertEquals(0.0, withTimeout(2_000) { routeWritten.await() }, 1e-9)
     }
 
     @Test

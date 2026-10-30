@@ -26,6 +26,7 @@ import androidx.compose.ui.window.DialogProperties
 import com.vincenthzr.locationspoofer.ui.R
 import com.vincenthzr.locationspoofer.data.model.AppState
 import com.vincenthzr.locationspoofer.data.model.RouteRunMode
+import com.vincenthzr.locationspoofer.data.model.RouteTravelMode
 import com.vincenthzr.locationspoofer.data.model.SimMode
 import com.vincenthzr.locationspoofer.ui.screen.AltitudeSettingsCard
 import com.vincenthzr.locationspoofer.ui.theme.AccentBlue
@@ -40,7 +41,9 @@ fun RouteConfigDialog(
     onSpeedChange: (SimMode) -> Unit,
     onCustomSpeedChange: (Double) -> Unit = {},
     onUseRealRouteChange: (Boolean) -> Unit = {},
+    onRouteTravelModeChange: (RouteTravelMode) -> Unit = {},
     onStopAtDestinationChange: (Boolean) -> Unit = {},
+    onRouteLateralDeviationChange: (Boolean) -> Unit = {},
     onEnableStepSimulationChange: (Boolean) -> Unit = {},
     onStepCadenceChange: (Int) -> Unit = {},
     onIsAutoCadenceChange: (Boolean) -> Unit = {},
@@ -50,8 +53,13 @@ fun RouteConfigDialog(
     onToggleJitter: () -> Unit = {},
     onAltitudeChange: (String) -> Unit = {},
     onAltitudeVariationChange: (Int) -> Unit = {},
+    onBarometerChange: (Boolean) -> Unit = {},
     onSatelliteCountChange: (String) -> Unit = {}
 ) {
+    var customSpeedInput by remember { mutableStateOf(uiState.customSpeedMs.toString()) }
+    val enteredSpeed = customSpeedInput.trim().replace(',', '.').toDoubleOrNull()
+        ?.takeIf { it.isFinite() && it in 0.2..45.0 }
+    // This dialog owns the input while open; delayed parent updates must not erase an edit.
     Dialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false)
@@ -261,11 +269,29 @@ fun RouteConfigDialog(
                                         )
                                     }
 
+                                    OutlinedTextField(
+                                        value = customSpeedInput,
+                                        onValueChange = { text ->
+                                            customSpeedInput = text
+                                            text.trim().replace(',', '.').toDoubleOrNull()
+                                                ?.takeIf { it.isFinite() && it in 0.2..45.0 }
+                                                ?.let(onCustomSpeedChange)
+                                        },
+                                        label = { Text(stringResource(R.string.route_speed_input)) },
+                                        supportingText = { Text(stringResource(R.string.route_speed_input_hint)) },
+                                        isError = enteredSpeed == null,
+                                        singleLine = true,
+                                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+
                                     Slider(
                                         value = sliderValue,
                                         onValueChange = {
-                                            sliderValue = it
-                                            onCustomSpeedChange(it.toDouble())
+                                            val speed = kotlin.math.round(it * 10.0) / 10.0
+                                            sliderValue = speed.toFloat()
+                                            customSpeedInput = speed.toString()
+                                            onCustomSpeedChange(speed)
                                         },
                                         valueRange = 0.2f..45.0f,
                                         steps = 447,
@@ -290,10 +316,12 @@ fun RouteConfigDialog(
                                                 modifier = Modifier
                                                     .weight(1f)
                                                     .clickable {
-                                                        val newVal =
-                                                            (sliderValue + step).coerceIn(0.2f, 45.0f)
-                                                        sliderValue = newVal
-                                                        onCustomSpeedChange(newVal.toDouble())
+                                                        val newVal = (kotlin.math.round(
+                                                            ((enteredSpeed ?: sliderValue.toDouble()) + step) * 100.0
+                                                        ) / 100.0).coerceIn(0.2, 45.0)
+                                                        sliderValue = newVal.toFloat()
+                                                        customSpeedInput = newVal.toString()
+                                                        onCustomSpeedChange(newVal)
                                                     }
                                             ) {
                                                 Text(
@@ -505,6 +533,8 @@ fun RouteConfigDialog(
                         altitudeInput = uiState.altitudeInput,
                         variationM = uiState.altitudeVariationM,
                         onAltitudeChange = onAltitudeChange,
+                        barometerSimulation = uiState.barometerSimulation,
+                        onBarometerChange = onBarometerChange,
                         onVariationChange = onAltitudeVariationChange
                     )
 
@@ -546,6 +576,23 @@ fun RouteConfigDialog(
                     }
 
 
+                    if (uiState.useRealRoute) {
+                        Text(stringResource(R.string.road_travel_mode), fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                        Text(stringResource(R.string.road_travel_mode_hint), fontSize = 12.sp)
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            listOf(
+                                RouteTravelMode.WALKING to R.string.walking,
+                                RouteTravelMode.CYCLING to R.string.cycling,
+                                RouteTravelMode.DRIVING to R.string.driving
+                            ).forEach { (mode, label) ->
+                                FilterChip(selected = uiState.routeTravelMode == mode,
+                                    onClick = { onRouteTravelModeChange(mode) },
+                                    label = { Text(stringResource(label), maxLines = 1) },
+                                    modifier = Modifier.weight(1f))
+                            }
+                        }
+                    }
+
                     // 环境模拟（Wi-Fi / 基站 / 蓝牙 / 抖动 / 卫星数）
                     // 这些参数路线模拟本来就已经传给底层了，只是之前没有入口，
                     // 用户必须回定点模拟那边才能改（issue #50）。这里复用同一份 uiState 与回调。
@@ -556,6 +603,12 @@ fun RouteConfigDialog(
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                     )
 
+                    RouteEnvToggleRow(
+                        title = stringResource(R.string.route_lateral_deviation),
+                        subtitle = stringResource(R.string.route_lateral_deviation_desc),
+                        checked = uiState.routeLateralDeviation,
+                        onCheckedChange = onRouteLateralDeviationChange
+                    )
                     if (uiState.canMockWifi || uiState.wigleToken.isNotBlank()) RouteEnvToggleRow(
                         title = stringResource(R.string.mock_wifi_data),
                         checked = uiState.mockWifi,
@@ -595,7 +648,17 @@ fun RouteConfigDialog(
                 // 固定启动按钮，设置内容独立滚动。
 
                 Button(
-                    onClick = onStartRoute,
+                    onClick = {
+                        if (uiState.routeSimMode == SimMode.CUSTOM) {
+                            val speed = customSpeedInput.trim().replace(',', '.').toDoubleOrNull()
+                                ?.takeIf { it.isFinite() && it in 0.2..45.0 }
+                            if (speed != null) {
+                                onCustomSpeedChange(speed)
+                                onStartRoute()
+                            }
+                        } else onStartRoute()
+                    },
+                    enabled = uiState.routeSimMode != SimMode.CUSTOM || enteredSpeed != null,
                     shape = RoundedCornerShape(16.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = AccentBlue),
                     modifier = Modifier

@@ -116,7 +116,7 @@ fun MapTypeDialog(
                         MiuixTypeOptionCard(
                             title = stringResource(R.string.map_type_standard),
                             icon = Icons.Rounded.Map,
-                            isSelected = currentMapType == AppMapType.NORMAL,
+                            isSelected = currentMapType == AppMapType.NORMAL || currentMapEngine == MapEngine.OSM,
                             onClick = {
                                 onMapTypeSelected(AppMapType.NORMAL)
                                 onDismiss()
@@ -124,6 +124,7 @@ fun MapTypeDialog(
                             modifier = Modifier.weight(1f)
                         )
 
+                        if (currentMapEngine != MapEngine.OSM) {
                         MiuixTypeOptionCard(
                             title = stringResource(R.string.map_type_satellite),
                             icon = Icons.Rounded.SatelliteAlt,
@@ -145,6 +146,10 @@ fun MapTypeDialog(
                             },
                             modifier = Modifier.weight(1f)
                         )
+                        }
+                    }
+                    if (currentMapEngine == MapEngine.OSM) {
+                        Text(stringResource(R.string.osm_standard_only), fontSize = 12.sp)
                     }
                 }
 
@@ -207,6 +212,13 @@ fun MapTypeDialog(
                             modifier = Modifier.weight(1f)
                         )
                     }
+                    MiuixEngineOptionCard(
+                        title = "OpenStreetMap",
+                        icon = Icons.Rounded.Public,
+                        isSelected = currentMapEngine == MapEngine.OSM,
+                        onClick = { onMapEngineSelected(MapEngine.OSM); onDismiss() },
+                        modifier = Modifier.fillMaxWidth()
+                    )
                 }
 
                 Spacer(Modifier.height(4.dp))

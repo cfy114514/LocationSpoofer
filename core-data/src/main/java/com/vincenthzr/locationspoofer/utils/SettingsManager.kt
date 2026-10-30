@@ -10,6 +10,8 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 class SettingsManager(context: Context) {
+    private val defaultMapEngine = if (context.packageName == "com.vincenthzr.locationspoofer.cfytest") "OSM" else "AUTO"
+    private val defaultRestartAppsOnSpoof = context.packageName != "com.vincenthzr.locationspoofer.cfytest"
     private val prefs: SharedPreferences =
         context.getSharedPreferences("app_settings", Context.MODE_PRIVATE)
 
@@ -68,7 +70,7 @@ class SettingsManager(context: Context) {
         set(value) = prefs.edit().putString("map_type", value).apply()
 
     var mapEngine: String
-        get() = prefs.getString("map_engine", "AUTO") ?: "AUTO"
+        get() = prefs.getString("map_engine", defaultMapEngine) ?: defaultMapEngine
         set(value) = prefs.edit().putString("map_engine", value).apply()
 
     var rootSolution: String
@@ -97,6 +99,10 @@ class SettingsManager(context: Context) {
         get() = prefs.getBoolean("is_spoofing_active", false)
         set(value) = prefs.edit().putBoolean("is_spoofing_active", value).apply()
 
+    var fixedJoystickEnabled: Boolean
+        get() = prefs.getBoolean("fixed_joystick_enabled", false)
+        set(value) = prefs.edit().putBoolean("fixed_joystick_enabled", value).apply()
+
     var lastSpoofedLat: String
         get() = prefs.getString("last_spoofed_lat", "0") ?: "0"
         set(value) = prefs.edit().putString("last_spoofed_lat", value).apply()
@@ -123,8 +129,12 @@ class SettingsManager(context: Context) {
 
     /** 开始模拟时是否强制重启已勾选作用域的目标 App，让它们加载当前模块并订阅框架配置 */
     var restartAppsOnSpoof: Boolean
-        get() = prefs.getBoolean("restart_apps_on_spoof", true)
+        get() = prefs.getBoolean("restart_apps_on_spoof", defaultRestartAppsOnSpoof)
         set(value) = prefs.edit().putBoolean("restart_apps_on_spoof", value).apply()
+
+    var barometerSimulation: Boolean
+        get() = prefs.getBoolean("barometer_simulation", false)
+        set(value) = prefs.edit().putBoolean("barometer_simulation", value).apply()
 
     var altitude: String
         get() = prefs.getString("altitude", "0.0") ?: "0.0"

@@ -13,6 +13,7 @@ android {
 
     defaultConfig {
         minSdk = 26
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         // 库模块没有自己的 versionName，这里手动生成一个同名 BuildConfig 字段，
         // 和 :app 共用 gradle.properties 里的同一个版本号来源，
@@ -96,6 +97,7 @@ dependencies {
     implementation(libs.baidu.map)
     implementation(libs.baidu.location)
     implementation(libs.baidu.search)
+    implementation("org.osmdroid:osmdroid-android:6.1.20")
     implementation(libs.google.maps)
     implementation(libs.google.places)
     implementation(libs.kotlinx.serialization.json)
@@ -119,4 +121,11 @@ dependencies {
     debugImplementation(libs.androidx.ui.tooling)
 
     testImplementation(libs.junit)
+    androidTestImplementation("androidx.test:runner:1.6.2")
+    androidTestImplementation("androidx.test:rules:1.6.1")
+    androidTestImplementation("androidx.test.ext:junit:1.2.1")
+    androidTestImplementation("androidx.test:core:1.6.1")
+    androidTestImplementation(libs.room.runtime)
+    androidTestImplementation(platform(libs.androidx.compose.bom))
+    androidTestImplementation("androidx.compose.ui:ui-test-junit4")
 }

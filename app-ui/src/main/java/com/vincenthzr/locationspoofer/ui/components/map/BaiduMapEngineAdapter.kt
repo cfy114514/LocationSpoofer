@@ -19,8 +19,10 @@ import com.vincenthzr.locationspoofer.ui.components.MarkerType
 class BaiduMapControllerImpl(
     private val map: BaiduMap,
     private val mapView: TextureMapView,
-    private val context: Context
+    private val context: Context,
+    private val interaction: MapInteractionContainer? = null
 ) : AppMapController {
+    override fun setOnUserDragListener(listener: (() -> Unit)?) { interaction?.onUserDrag = listener }
     private var isDarkMode: Boolean = false
     private var currentMapType: AppMapType = AppMapType.NORMAL
 
@@ -283,15 +285,17 @@ fun BaiduMapViewContainer(
 
     AndroidView(
         factory = {
+            val container = MapInteractionContainer(context)
             baiduMapView.apply {
                 setOnTouchListener { v, _ -> v.parent?.requestDisallowInterceptTouchEvent(true); false }
                 map.setOnMapLoadedCallback {
-                    val controller = BaiduMapControllerImpl(map, this, context)
+                    val controller = BaiduMapControllerImpl(map, this, context, container)
                     onControllerCreated(controller)
                     controller.setDarkMode(isDark, context)
                     onMapReady(controller)
                 }
             }
+            container.apply { addView(baiduMapView, android.widget.FrameLayout.LayoutParams(-1, -1)) }
         },
         modifier = modifier
     )

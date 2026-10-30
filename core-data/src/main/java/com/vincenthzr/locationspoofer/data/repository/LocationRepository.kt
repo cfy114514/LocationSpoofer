@@ -9,6 +9,7 @@ import com.vincenthzr.locationspoofer.data.model.RootSetupTestResult
 import com.vincenthzr.locationspoofer.data.model.RootSolution
 import com.vincenthzr.locationspoofer.data.model.RoutePoint
 import com.vincenthzr.locationspoofer.data.state.SpoofingState
+import com.vincenthzr.locationspoofer.data.state.recordingSimulationCoordinator
 import com.vincenthzr.locationspoofer.utils.ConfigManager
 import com.vincenthzr.locationspoofer.utils.LSPosedManager
 import com.vincenthzr.locationspoofer.utils.RootManager
@@ -94,9 +95,18 @@ class LocationRepository(
         stopAtDestination: Boolean = false,
         enableStepSimulation: Boolean = true,
         stepCadenceSpm: Int = 165,
-        isAutoCadence: Boolean = true
+        isAutoCadence: Boolean = true,
+        routeLateralDeviation: Boolean = false
     ) {
+        // Mark the transition first so a recorder cannot start while its stop is dispatched.
+        val wasActive = SpoofingState.isActive
         SpoofingState.isActive = true
+        try {
+            recordingSimulationCoordinator.beforeSimulation()
+        } catch (error: Throwable) {
+            SpoofingState.isActive = wasActive
+            throw error
+        }
         SpoofingState.latitude = lat
         SpoofingState.longitude = lng
         SpoofingState.startTimestamp = startTime
@@ -143,7 +153,8 @@ class LocationRepository(
             stopAtDestination,
             enableStepSimulation,
             stepCadenceSpm,
-            isAutoCadence
+            isAutoCadence,
+            routeLateralDeviation
         )
 
         spoofingServiceController.startForeground(context, lat, lng)
@@ -162,7 +173,8 @@ class LocationRepository(
 
         // 1. 同步在当前进程清理所有可能残留的 TestProvider
         val lm = context.getSystemService(Context.LOCATION_SERVICE) as? LocationManager
-        if (lm != null) {
+        // The coexist build must never remove system providers left by another installation.
+        if (lm != null && context.packageName == "com.vincenthzr.locationspoofer") {
             try {
                 lm.setTestProviderEnabled(LocationManager.GPS_PROVIDER, false)
             } catch (e: Throwable) {
@@ -330,5 +342,9 @@ class LocationRepository(
 
     suspend fun deleteSavedRoute(route: SavedRouteEntity) {
         savedRouteDao.deleteSavedRoute(route)
+    }
+
+    suspend fun deleteSavedRouteById(id: Long) {
+        savedRouteDao.deleteSavedRouteById(id)
     }
 }

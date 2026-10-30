@@ -32,8 +32,8 @@ class SpoofingControlReceiver : BroadcastReceiver(), KoinComponent {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 when (intent.action) {
-                    ACTION_START -> handleStart(context, intent)
-                    ACTION_STOP -> handleStop(context)
+                    "${context.packageName}.START" -> handleStart(context, intent)
+                    "${context.packageName}.STOP" -> handleStop(context)
                 }
             } finally {
                 pendingResult.finish()

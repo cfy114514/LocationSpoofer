@@ -10,6 +10,7 @@ import com.vincenthzr.locationspoofer.data.model.MapEngine
 import com.vincenthzr.locationspoofer.ui.components.map.AMapViewContainer
 import com.vincenthzr.locationspoofer.ui.components.map.BaiduMapViewContainer
 import com.vincenthzr.locationspoofer.ui.components.map.GoogleMapViewContainer
+import com.vincenthzr.locationspoofer.ui.components.map.OsmMapViewContainer
 
 interface AppMapMarker {
     fun setPosition(lat: Double, lng: Double)
@@ -47,6 +48,7 @@ interface AppMapController {
     val cameraTargetLng: Double?
     fun setOnCameraChangeListener(onFinish: (lat: Double, lng: Double) -> Unit)
     fun setOnCameraMoveListener(onMove: (lat: Double, lng: Double) -> Unit)
+    fun setOnUserDragListener(listener: (() -> Unit)?) {}
     fun disableUiControls()
     fun setMapType(type: AppMapType)
     fun setDarkMode(isDark: Boolean, context: android.content.Context)
@@ -81,6 +83,9 @@ fun AppMapView(
     }
 
     when (activeEngine) {
+        MapEngine.OSM -> {
+            OsmMapViewContainer(context, lifecycleOwner, modifier, onMapReady, { mapController = it })
+        }
         MapEngine.BAIDU -> {
             BaiduMapViewContainer(
                 context = context,

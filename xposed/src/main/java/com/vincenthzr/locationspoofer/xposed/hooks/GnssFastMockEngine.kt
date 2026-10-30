@@ -66,12 +66,7 @@ object GnssFastMockEngine {
     )
 
     // 缓存区 (零 GC 复用)
-    @Volatile
-    private var cachedGnssStatusObj: Any? = null
-    @Volatile
-    private var lastGnssStatusTimeMs: Long = 0L
-    @Volatile
-    private var cachedGnssCount: Int = 0
+    private val gnssCache = GnssSnapshotCache<Any>()
 
     @Volatile
     private var cachedGpsSatelliteList: List<Any>? = null
@@ -205,16 +200,11 @@ object GnssFastMockEngine {
         val count = targetCount.coerceIn(4, MAX_SATELLITES)
 
         // 1 秒内命中快照直接返回
-        val cached = cachedGnssStatusObj
-        if (cached != null && cachedGnssCount == count && now - lastGnssStatusTimeMs < 1000L) {
-            return cached
-        }
+        gnssCache.get(count, enableJitter, now)?.let { return it }
 
         synchronized(this) {
             // Double check
-            if (cachedGnssStatusObj != null && cachedGnssCount == count && now - lastGnssStatusTimeMs < 1000L) {
-                return cachedGnssStatusObj
-            }
+            gnssCache.get(count, enableJitter, now)?.let { return it }
 
             val holder = getReflectionHolder(classLoader)
             val timeStep = (now / 1000L)
@@ -268,9 +258,7 @@ object GnssFastMockEngine {
                     }
 
                     val newStatus = holder.buildMethod!!.invoke(builder)
-                    cachedGnssStatusObj = newStatus
-                    lastGnssStatusTimeMs = now
-                    cachedGnssCount = count
+                    if (newStatus != null) gnssCache.put(count, enableJitter, now, newStatus)
                     return newStatus
                 } catch (e: Throwable) {
                     XposedBridge.log("[GnssFastMockEngine] Builder build failed: $e")
@@ -327,9 +315,7 @@ object GnssFastMockEngine {
                     holder.carrierFrequenciesField?.set(fallbackOriginalObj, carrierFreqs)
                     holder.basebandCn0DbHzsField?.set(fallbackOriginalObj, basebandCn0s)
 
-                    cachedGnssStatusObj = fallbackOriginalObj
-                    lastGnssStatusTimeMs = now
-                    cachedGnssCount = count
+                    gnssCache.put(count, enableJitter, now, fallbackOriginalObj)
                     return fallbackOriginalObj
                 } catch (e: Throwable) {
                     XposedBridge.log("[GnssFastMockEngine] Fallback field injection failed: $e")
@@ -369,7 +355,7 @@ object GnssFastMockEngine {
                 for (i in 0 until count) {
                     val type = CONSTELLATION_TYPES[i]
                     val rawSvid = SVID_LIST[i]
-                    val prn = if (type == 3) rawSvid + 64 else rawSvid
+                    val prn = legacySatellitePrn(type, rawSvid) ?: continue
 
                     val sat = holder.gpsSatelliteConstructor!!.newInstance(prn)
                     val baseElev = BASE_ELEVATIONS[i]

@@ -12,6 +12,7 @@ android {
 
     defaultConfig {
         minSdk = 26
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         // service 本身不区分模拟方案，只是依赖了带 scheme 维度的 :core-data；
         // 最终打进 APK 的 core-data 变体由 :app 的 flavor 决定，这里只影响编译期解析
         missingDimensionStrategy("scheme", "scoped")
@@ -34,6 +35,10 @@ kotlin {
 
 dependencies {
     implementation(project(":core-data"))
+    testImplementation(libs.junit)
+    androidTestImplementation("androidx.test:runner:1.6.2")
+    androidTestImplementation("androidx.test:core:1.6.1")
+    androidTestImplementation("androidx.test.ext:junit:1.2.1")
 
     implementation(libs.koin.android)
 

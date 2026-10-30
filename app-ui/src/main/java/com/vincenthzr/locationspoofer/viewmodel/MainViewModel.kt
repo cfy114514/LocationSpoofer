@@ -46,7 +46,10 @@ class MainViewModel(
     internal val motionController: MotionController,
     internal val context: Context
 ) : ViewModel() {
+    internal val realRouteRecorder by lazy { com.vincenthzr.locationspoofer.ui.screen.tabs.route.RealRouteRecorder.getInstance(context) }
     internal var lastMapMoveTime = 0L
+    internal var routePlanJob: Job? = null
+    internal var routePlanGeneration: Long = 0L
     internal var mapMoveJob: Job? = null
     internal var gaitRecordingJob: Job? = null
     internal var mockCapabilitiesJob: Job? = null
@@ -98,8 +101,10 @@ class MainViewModel(
             mockBluetooth = settingsRepository.mockBluetooth,
             enableJitter = settingsRepository.enableJitter,
             restartAppsOnSpoof = settingsRepository.restartAppsOnSpoof,
+            fixedJoystickEnabled = settingsRepository.fixedJoystickEnabled,
             altitudeInput = settingsRepository.altitude,
             altitudeVariationM = settingsRepository.altitudeVariationM,
+            barometerSimulation = settingsRepository.barometerSimulation,
             satelliteCountInput = settingsRepository.satelliteCount,
             wigleToken = settingsRepository.getWigleApiToken(),
             opencellidToken = settingsRepository.getOpencellidApiToken()

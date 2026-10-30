@@ -23,6 +23,7 @@ import androidx.compose.material.icons.automirrored.rounded.Undo
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -37,6 +38,8 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -58,6 +61,7 @@ import com.vincenthzr.locationspoofer.ui.components.MapCoverageHelper
 import com.vincenthzr.locationspoofer.viewmodel.prepareRouteSimulationOptions
 import com.vincenthzr.locationspoofer.viewmodel.MainViewModel
 import com.vincenthzr.locationspoofer.viewmodel.setAltitude
+import com.vincenthzr.locationspoofer.viewmodel.setBarometerSimulation
 import com.vincenthzr.locationspoofer.viewmodel.setAltitudeVariation
 import com.vincenthzr.locationspoofer.viewmodel.ManageDataViewModel
 import com.vincenthzr.locationspoofer.viewmodel.addRoutePoint
@@ -66,6 +70,7 @@ import com.vincenthzr.locationspoofer.viewmodel.finishSelectingPoints
 import com.vincenthzr.locationspoofer.viewmodel.isDomesticEnvironment
 import com.vincenthzr.locationspoofer.viewmodel.performLocalSearch
 import com.vincenthzr.locationspoofer.viewmodel.restartSelectingPoints
+import com.vincenthzr.locationspoofer.viewmodel.cancelPendingRoadRoute
 import com.vincenthzr.locationspoofer.viewmodel.setCustomSpeedMs
 import com.vincenthzr.locationspoofer.viewmodel.setEnableStepSimulation
 import com.vincenthzr.locationspoofer.viewmodel.setIsAutoCadence
@@ -77,7 +82,9 @@ import com.vincenthzr.locationspoofer.viewmodel.setSatelliteCount
 import com.vincenthzr.locationspoofer.viewmodel.setSearchMode
 import com.vincenthzr.locationspoofer.viewmodel.setStepCadenceSpm
 import com.vincenthzr.locationspoofer.viewmodel.setStopAtDestination
+import com.vincenthzr.locationspoofer.viewmodel.setRouteLateralDeviation
 import com.vincenthzr.locationspoofer.viewmodel.setUseRealRoute
+import com.vincenthzr.locationspoofer.viewmodel.setRouteTravelMode
 import com.vincenthzr.locationspoofer.viewmodel.startRoutePlanning
 import com.vincenthzr.locationspoofer.viewmodel.stopRoutePlanning
 import com.vincenthzr.locationspoofer.viewmodel.toggleEnableJitter
@@ -105,6 +112,31 @@ fun RouteTab(
     var showConfigDialog by remember { mutableStateOf(false) }
     var showSaveRouteDialog by remember { mutableStateOf(false) }
     var showSavedRoutesDialog by remember { mutableStateOf(false) }
+    var showRealRouteDialog by rememberSaveable { mutableStateOf(false) }
+    val realRecorder = viewModel.realRouteRecorder
+    val recordingSession = realRecorder.recording || realRecorder.starting
+    var followRecording by remember { mutableStateOf(false) }
+    var followOrigin by remember { mutableStateOf<Pair<Double, Double>?>(null) }
+    val setRecordingFollow: (Boolean) -> Unit = { enabled ->
+        if (enabled && followOrigin == null) {
+            val lat = mapController?.cameraTargetLat
+            val lng = mapController?.cameraTargetLng
+            if (lat != null && lng != null) followOrigin = lat to lng
+        }
+        if (!enabled) followOrigin = null
+        followRecording = enabled
+    }
+    LaunchedEffect(mapController) {
+        followRecording = false
+        followOrigin = null
+    }
+    val onMapDrag by rememberUpdatedState {
+        if (followRecording) setRecordingFollow(false)
+    }
+    DisposableEffect(mapController, isActive) {
+        if (isActive) mapController?.setOnUserDragListener { onMapDrag() }
+        onDispose { mapController?.setOnUserDragListener(null) }
+    }
     val isDomestic = viewModel.isDomesticEnvironment()
     var searchQuery by remember { mutableStateOf("") }
     var searchResults by remember { mutableStateOf<List<AppPoiItem>>(emptyList()) }
@@ -175,7 +207,8 @@ fun RouteTab(
 
     val manageDataList = manageDataViewModel.uiState.collectAsState().value.dataList
     var liveMarker by remember { mutableStateOf<AppMapMarker?>(null) }
-    LaunchedEffect(routePoints, mapController, manageDataList, isActive, collectionRoutes, uiState.selectedCollectionRouteId) {
+    val realPoints = if (recordingSession) realRecorder.points else emptyList()
+    LaunchedEffect(routePoints, realPoints, mapController, manageDataList, isActive, collectionRoutes, uiState.selectedCollectionRouteId) {
         if (!isActive) return@LaunchedEffect
         val map = mapController ?: return@LaunchedEffect
         map.clear()
@@ -199,7 +232,7 @@ fun RouteTab(
                 idx == routePoints.lastIndex && routePoints.size > 1 -> MarkerType.RED
                 else -> MarkerType.DEFAULT
             }
-            if (uiState.useRealRoute && uiState.routePlanStage == RoutePlanStage.RUNNING && type == MarkerType.DEFAULT) {
+            if ((routePoints.size > 200 || (uiState.useRealRoute && uiState.routePlanStage == RoutePlanStage.RUNNING)) && type == MarkerType.DEFAULT) {
                 return@forEachIndexed
             }
             val startBadge = context.getString(R.string.route_start_badge)
@@ -217,6 +250,13 @@ fun RouteTab(
             )
         }
 
+        if (realPoints.size >= 2) {
+            map.addPolyline(realPoints.map { it.lat to it.lng }, android.graphics.Color.parseColor("#FFF28C28"), 6f)
+        }
+        realPoints.lastOrNull()?.let { point ->
+            map.addMarker(point.lat, point.lng, context.getString(R.string.real_route_latest_point), MarkerType.ORANGE)
+        }
+
         if (uiState.isSpoofingActive) {
             val currentLat = uiState.latitudeInput.toDoubleOrNull()
             val currentLng = uiState.longitudeInput.toDoubleOrNull()
@@ -227,6 +267,16 @@ fun RouteTab(
                     MarkerType.ORANGE
                 )
             }
+        }
+    }
+
+    LaunchedEffect(recordingSession, followRecording, realPoints.lastOrNull(), isActive, mapController) {
+        if (!recordingSession) {
+            if (isActive) followOrigin?.let { mapController?.animateCamera(it.first, it.second) }
+            followOrigin = null
+            followRecording = false
+        } else if (isActive && followRecording) {
+            realPoints.lastOrNull()?.let { mapController?.animateCamera(it.lat, it.lng) }
         }
     }
 
@@ -439,6 +489,22 @@ fun RouteTab(
                             onClick = { showMapTypeDialog = true }
                         )
                         RouteControlButton(
+                            icon = Icons.Rounded.FiberManualRecord,
+                            onClick = { showRealRouteDialog = true }
+                        )
+                        if (recordingSession) {
+                            val label = stringResource(R.string.real_route_follow)
+                            val state = stringResource(if (followRecording) R.string.real_route_follow_on else R.string.real_route_follow_off)
+                            IconToggleButton(
+                                checked = followRecording,
+                                onCheckedChange = setRecordingFollow,
+                                modifier = Modifier.size(46.dp).semantics { stateDescription = state }
+                            ) {
+                                Icon(Icons.Rounded.MyLocation, contentDescription = label,
+                                    tint = if (followRecording) AccentOrange else AccentBlue)
+                            }
+                        }
+                        RouteControlButton(
                             icon = Icons.Rounded.Bookmarks,
                             onClick = { showSavedRoutesDialog = true }
                         )
@@ -615,7 +681,9 @@ fun RouteTab(
             onSpeedChange = viewModel::setRouteSimMode,
             onCustomSpeedChange = viewModel::setCustomSpeedMs,
             onUseRealRouteChange = viewModel::setUseRealRoute,
+            onRouteTravelModeChange = viewModel::setRouteTravelMode,
             onStopAtDestinationChange = viewModel::setStopAtDestination,
+            onRouteLateralDeviationChange = viewModel::setRouteLateralDeviation,
             onEnableStepSimulationChange = viewModel::setEnableStepSimulation,
             onStepCadenceChange = viewModel::setStepCadenceSpm,
             onIsAutoCadenceChange = viewModel::setIsAutoCadence,
@@ -625,38 +693,22 @@ fun RouteTab(
             onToggleJitter = viewModel::toggleEnableJitter,
             onAltitudeChange = viewModel::setAltitude,
             onAltitudeVariationChange = viewModel::setAltitudeVariation,
+            onBarometerChange = viewModel::setBarometerSimulation,
             onSatelliteCountChange = viewModel::setSatelliteCount
         )
     }
 
     if (uiState.isFetchingRoute) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.35f)),
-            contentAlignment = Alignment.Center
-        ) {
-            Card(
-                shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                elevation = CardDefaults.cardElevation(defaultElevation = 10.dp),
-                modifier = Modifier.padding(32.dp)
-            ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 20.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    CircularProgressIndicator(modifier = Modifier.size(24.dp), color = AccentBlue)
-                    Text(
-                        stringResource(R.string.planning_route_trajectory),
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
+        AlertDialog(
+            onDismissRequest = { viewModel.cancelPendingRoadRoute() },
+            title = { Text(stringResource(R.string.planning_route_trajectory)) },
+            text = { CircularProgressIndicator(modifier = Modifier.size(24.dp), color = AccentBlue) },
+            confirmButton = {
+                TextButton(onClick = { viewModel.cancelPendingRoadRoute() }) {
+                    Text(stringResource(R.string.cancel))
                 }
             }
-        }
+        )
     }
 
     if (showMapTypeDialog) {
@@ -675,6 +727,10 @@ fun RouteTab(
             viewModel = viewModel,
             onDismiss = { showSaveRouteDialog = false }
         )
+    }
+
+    if (showRealRouteDialog) {
+        RealRouteRecordingDialog(viewModel, uiState.isSpoofingActive, followRecording, setRecordingFollow) { showRealRouteDialog = false }
     }
 
     if (showSavedRoutesDialog) {

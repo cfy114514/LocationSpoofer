@@ -31,6 +31,7 @@ object SystemHookUtils {
      */
     private val BASE_EXEMPT_PACKAGES = setOf(
         "com.vincenthzr.locationspoofer",
+        "com.vincenthzr.locationspoofer.cfytest",
         "android",
         "system_server",
         "system",
@@ -225,7 +226,7 @@ object SystemHookUtils {
         val cleanPkg = explicitPackage?.substringBefore(":")?.trim()
 
         // 1. 严格排除自身，绝不模拟自身
-        if (cleanPkg == "com.vincenthzr.locationspoofer" || explicitPackage == "com.vincenthzr.locationspoofer") {
+        if (cleanPkg in setOf("com.vincenthzr.locationspoofer", "com.vincenthzr.locationspoofer.cfytest") || explicitPackage in setOf("com.vincenthzr.locationspoofer", "com.vincenthzr.locationspoofer.cfytest")) {
             return false
         }
 
@@ -240,7 +241,7 @@ object SystemHookUtils {
         }
 
         val callingPackages = resolveCallingPackages(serviceInstance, uid)
-        if (callingPackages.any { it.substringBefore(":") == "com.vincenthzr.locationspoofer" }) {
+        if (callingPackages.any { it.substringBefore(":") in setOf("com.vincenthzr.locationspoofer", "com.vincenthzr.locationspoofer.cfytest") }) {
             return false
         }
         if (callingPackages.any { EXEMPT_PACKAGES.contains(it.substringBefore(":")) }) {

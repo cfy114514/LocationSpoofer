@@ -184,7 +184,8 @@ fun MapEngineSettingsScreen(
                                 MapEngine.AUTO to stringResource(R.string.engine_auto_short),
                                 MapEngine.AMAP to stringResource(R.string.engine_amap_short),
                                 MapEngine.BAIDU to stringResource(R.string.engine_baidu_short),
-                                MapEngine.GOOGLE to stringResource(R.string.engine_google_short)
+                                MapEngine.GOOGLE to stringResource(R.string.engine_google_short),
+                                MapEngine.OSM to "OSM"
                             )
                             engines.forEach { (engine, label) ->
                                 val isSelected = uiState.mapEngine == engine

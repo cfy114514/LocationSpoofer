@@ -1,0 +1,53 @@
+name: Validate changes
+on:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+      - run: chmod +x gradlew
+      - run: ./gradlew --no-daemon :app:assembleScopedCoexist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: scoped-coexist-apks
+          path: app/build/outputs/apk/scoped/coexist/*.apk
+          if-no-files-found: error
+      - run: ./gradlew --no-daemon :app:assembleGlobalDebug
+      - run: ./gradlew --no-daemon :app:assembleScopedDebug -PAPP_VERSION_NAME=3.0.0-test
+      - uses: actions/upload-artifact@v4
+        with:
+          name: scoped-standard-test-apks
+          path: app/build/outputs/apk/scoped/debug/*.apk
+          if-no-files-found: error
+      - run: ./gradlew --no-daemon :app-ui:assembleScopedDebugAndroidTest
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-test-apks
+          path: app-ui/build/outputs/apk/androidTest/**/*.apk
+          if-no-files-found: error
+      - run: ./gradlew --no-daemon :service:assembleDebugAndroidTest
+      - uses: actions/upload-artifact@v4
+        with:
+          name: service-android-test-apks
+          path: service/build/outputs/apk/androidTest/**/*.apk
+          if-no-files-found: error
+      - run: ./gradlew --no-daemon :core-geo:test :xposed:test :app-ui:testScopedDebugUnitTest :core-data:testScopedDebugUnitTest :service:testDebugUnitTest
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports
+          path: '**/build/reports/tests/'
+          if-no-files-found: ignore

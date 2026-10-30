@@ -5,6 +5,7 @@
     <string name="spoofing_service_channel_name">位置模拟服务</string>
     <string name="spoofing_bg_notification_title">模拟定位后台保活通知</string>
     <string name="floating_joystick_title">摇杆</string>
+    <string name="fj_open_failed">无法打开悬浮摇杆，请检查悬浮窗权限后重试。</string>
     <string name="fj_collapse">收起</string>
     <string name="fj_preset_walking">步行</string>
     <string name="fj_preset_running">跑步</string>
@@ -20,4 +21,6 @@
     <string name="fj_save">保存</string>
     <string name="fj_discard">放弃</string>
     <string name="fj_saved_toast">路线已保存</string>
+    <string name="fj_lock_hint">向一个方向稳定推动 1.5 秒可锁定方向</string>
+    <string name="fj_unlock">解锁并停止</string>
 </resources>

@@ -41,6 +41,7 @@ android {
         }
 
         manifestPlaceholders["googleMapsApiKey"] = googleMapsApiKey
+        manifestPlaceholders["appLabel"] = "LocationSpoofer"
 
         splits {
             abi {
@@ -97,6 +98,14 @@ android {
             signingConfig = signingConfigs.getByName(if (hasReleaseKeystore) "release" else "debug")
             buildConfigField("String", "GOOGLE_MAPS_API_KEY", "\"$googleMapsApiKey\"")
         }
+        create("coexist") {
+            initWith(getByName("debug"))
+            applicationIdSuffix = ".cfytest"
+            versionNameSuffix = "-test"
+            manifestPlaceholders["appLabel"] = "LocationSpoofer 测试版"
+            signingConfig = signingConfigs.getByName("debug")
+            matchingFallbacks += listOf("debug")
+        }
         release {
             isMinifyEnabled = true
             isShrinkResources = true
@@ -120,6 +129,14 @@ android {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
+    }
+}
+
+// Global hooks and their system status files are shared across installations.
+// Only the scoped build is offered for side-by-side testing.
+androidComponents {
+    beforeVariants(selector().withBuildType("coexist").withFlavor("scheme" to "global")) {
+        it.enable = false
     }
 }
 

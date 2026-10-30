@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import java.util.concurrent.atomic.AtomicReference
 import kotlin.math.abs
 
 /**
@@ -101,6 +102,8 @@ class MotionController(
     private var stopAtDestination = false
     private var routeStartTs = 0L
     private var routeOffset = 0.0
+    private var lateralDeviation = false
+    private var lateralSeed = 0L
     private var pausePoint: LatLng? = null
     private var pauseDistance = 0.0
 
@@ -118,14 +121,13 @@ class MotionController(
     private val recorded = ArrayList<LatLng>()
 
     // ---- 合并写入：只保证执行"最新一次"请求的运动状态，避免积压的旧写入晚于新写入落盘
-    @Volatile private var pendingWrite: (suspend () -> Unit)? = null
+    private val pendingWrite = AtomicReference<(suspend () -> Unit)?>(null)
     private val writeSignal = Channel<Unit>(Channel.CONFLATED)
 
     init {
         scope.launch {
             for (ignored in writeSignal) {
-                val job = pendingWrite ?: continue
-                pendingWrite = null
+                val job = pendingWrite.getAndSet(null) ?: continue
                 try {
                     job()
                 } catch (_: Exception) {
@@ -152,12 +154,15 @@ class MotionController(
         preset: SpeedPreset,
         stopAtDestination: Boolean,
         startTimestamp: Long,
-        startPaused: Boolean = false
+        startPaused: Boolean = false,
+        lateralDeviation: Boolean = false
     ) {
         val routePath = RoutePath(points.map { LatLng(it.lat, it.lng) })
         if (!routePath.isValid) return
         path = routePath
         this.stopAtDestination = stopAtDestination
+        this.lateralDeviation = lateralDeviation
+        lateralSeed = startTimestamp
         routeStartTs = startTimestamp
         routeOffset = 0.0
         joyIntensity = 0f
@@ -186,7 +191,7 @@ class MotionController(
     fun onStopped() {
         clearRoute()
         joyIntensity = 0f
-        pendingWrite = null
+        pendingWrite.set(null)
         if (_state.value.recording) finishRecording()
         _state.update { it.copy(mode = Mode.IDLE, speedMs = 0.0, hasRoute = false, paused = false, returning = false) }
         tickJob?.cancel()
@@ -224,7 +229,7 @@ class MotionController(
         if (s.mode != Mode.ROUTE) return
         val now = clock()
         val traveled = traveledAt(now)
-        val pos = routePath.positionAt(traveled, stopAtDestination)
+        val pos = routePosition(routePath, traveled)
         pauseDistance = traveled
         pausePoint = LatLng(pos.lat, pos.lng)
         joyIntensity = 0f
@@ -306,6 +311,10 @@ class MotionController(
     }
 
     /** 与 Xposed 端 RouteEngine 同一公式：偏移 + 从本段开始时刻起按（带浮动的）速度行进的距离 */
+    private fun routePosition(path: RoutePath, distance: Double): RoutePath.Position =
+        if (lateralDeviation) path.positionWithLateralDeviation(distance, stopAtDestination, lateralSeed)
+        else path.positionAt(distance, stopAtDestination)
+
     private fun traveledAt(now: Long): Double {
         val elapsed = (now - routeStartTs).coerceAtLeast(0L) / 1000.0
         return routeOffset + realism(routeStartTs).distance(_state.value.preset.speedMs, elapsed)
@@ -330,7 +339,7 @@ class MotionController(
             s.mode == Mode.ROUTE -> {
                 val routePath = path ?: return
                 val elapsed = (now - routeStartTs).coerceAtLeast(0L) / 1000.0
-                val pos = routePath.positionAt(traveledAt(now), stopAtDestination)
+                val pos = routePosition(routePath, traveledAt(now))
                 val speed = if (pos.arrived) 0.0 else realism(routeStartTs).speed(s.preset.speedMs, elapsed)
                 _state.update { it.copy(lat = pos.lat, lng = pos.lng, bearing = pos.bearing, speedMs = speed) }
             }
@@ -407,7 +416,7 @@ class MotionController(
     }
 
     private fun enqueueWrite(block: suspend () -> Unit) {
-        pendingWrite = block
+        pendingWrite.set(block)
         writeSignal.trySend(Unit)
     }
 

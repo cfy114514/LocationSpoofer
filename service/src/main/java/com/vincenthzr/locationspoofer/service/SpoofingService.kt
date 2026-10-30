@@ -140,6 +140,8 @@ class SpoofingService : Service() {
     }
 
     private fun cleanupLegacyTestProviders() {
+        // A side-by-side test installation must not tear down another app's providers.
+        if (packageName != "com.vincenthzr.locationspoofer") return
         val providers =
             mutableListOf(LocationManager.GPS_PROVIDER, LocationManager.NETWORK_PROVIDER)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {

@@ -212,7 +212,24 @@ fun performPoiSearch(
     isDomestic: Boolean = true,
     onResult: (List<AppPoiItem>) -> Unit
 ) {
-    if (mapEngine == MapEngine.BAIDU) {
+    if (mapEngine == MapEngine.OSM) {
+        // Android's configured geocoder provides place search without relying on the
+        // original project's service. Coordinates returned by Geocoder are WGS-84.
+        val appContext = context.applicationContext
+        Thread {
+            val results = try {
+                @Suppress("DEPRECATION")
+                android.location.Geocoder(appContext).getFromLocationName(keyword, 10).orEmpty()
+                    .filter { it.hasLatitude() && it.hasLongitude() }
+                    .map { address ->
+                        val point = com.vincenthzr.locationspoofer.utils.CoordinateUtils.wgs84ToGcj02(address.latitude, address.longitude)
+                        val label = address.featureName ?: address.getAddressLine(0) ?: keyword
+                        AppPoiItem(label, address.getAddressLine(0) ?: "", point.lat, point.lng)
+                    }
+            } catch (_: Exception) { emptyList() }
+            android.os.Handler(android.os.Looper.getMainLooper()).post { onResult(results) }
+        }.start()
+    } else if (mapEngine == MapEngine.BAIDU) {
         try {
             val mPoiSearch = com.baidu.mapapi.search.poi.PoiSearch.newInstance()
             mPoiSearch.setOnGetPoiSearchResultListener(object :

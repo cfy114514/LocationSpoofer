@@ -90,6 +90,7 @@ data class AppState(
     val showCoordinateError: Boolean = false,
     val isSavingConfig: Boolean = false,
     val isSpoofingActive: Boolean = false,
+    val fixedJoystickEnabled: Boolean = false,
     val wifiLoadStatus: WifiLoadStatus = WifiLoadStatus.IDLE,
     val wifiApCount: Int = 0,
     val savedLocations: List<SavedLocation> = emptyList(),
@@ -115,8 +116,10 @@ data class AppState(
     val isAutoCadence: Boolean = true,
     /** 是否使用真实路线规划 */
     val useRealRoute: Boolean = false,
+    val routeTravelMode: RouteTravelMode = RouteTravelMode.DRIVING,
     /** 到达终点后是否停下 */
     val stopAtDestination: Boolean = false,
+    val routeLateralDeviation: Boolean = false,
     /** 是否正在向地图API请求真实路线 */
     val isFetchingRoute: Boolean = false,
     /** 首页地图已确认的选点（点击地图后出现确认按钮，确认后填充坐标） */
@@ -161,6 +164,7 @@ data class AppState(
     val enableJitter: Boolean = true,
     val restartAppsOnSpoof: Boolean = true,
     val altitudeInput: String = "0.0",
+    val barometerSimulation: Boolean = false,
     val altitudeVariationM: Int = AltitudeModel.DEFAULT_VARIATION_M,
     val satelliteCountInput: String = "20",
     val canMockWifi: Boolean = false,

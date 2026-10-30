@@ -8,13 +8,13 @@ import com.vincenthzr.locationspoofer.data.model.AppState
 import com.vincenthzr.locationspoofer.data.model.RoutePoint
 import com.vincenthzr.locationspoofer.data.model.RoutePlanStage
 import com.vincenthzr.locationspoofer.data.model.RouteRunMode
+import com.vincenthzr.locationspoofer.data.model.RouteTravelMode
 import com.vincenthzr.locationspoofer.data.model.SavedLocation
 import com.vincenthzr.locationspoofer.data.model.SimMode
 import com.vincenthzr.locationspoofer.data.state.SpoofingState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.withLock
@@ -23,6 +23,7 @@ import kotlinx.coroutines.withContext
 // MainViewModel 的路线规划、收藏位置/路线与自动巡航相关扩展函数
 
 internal fun MainViewModel.enterRoutePlanning() {
+    cancelPendingRoadRoute()
     _uiState.update {
         it.copy(
             routePlanStage = RoutePlanStage.SELECTING,
@@ -57,6 +58,7 @@ internal fun MainViewModel.finishSelectingPoints() {
 /** 重新选点：清空路点，回到 SELECTING */
 
 internal fun MainViewModel.restartSelectingPoints() {
+    cancelPendingRoadRoute()
     _uiState.update {
         it.copy(
             routePoints = emptyList(),
@@ -79,14 +81,9 @@ internal fun MainViewModel.saveRoute(name: String, points: List<RoutePoint>) {
 }
 
 internal fun MainViewModel.deleteSavedRoute(route: com.vincenthzr.locationspoofer.data.model.SavedRoute) {
+    val id = route.id ?: return
     viewModelScope.launch(Dispatchers.IO) {
-        // 我们通过寻找匹配名称的实体进行删除
-        // （有点取巧，但目前有效，或者我们可以在 DAO 中添加按名称删除的功能）
-        val routes = locationRepository.getSavedRoutes().first()
-        val entity = routes.find { it.name == route.name }
-        if (entity != null) {
-            locationRepository.deleteSavedRoute(entity)
-        }
+        locationRepository.deleteSavedRouteById(id)
     }
 }
 
@@ -163,8 +160,16 @@ internal fun MainViewModel.confirmMapPoint(lat: Double, lng: Double, isDragging:
 
 /** 清除地图选点状态 */
 
+internal fun MainViewModel.setRouteTravelMode(mode: RouteTravelMode) {
+    _uiState.update { it.copy(routeTravelMode = mode) }
+}
+
 internal fun MainViewModel.setUseRealRoute(use: Boolean) {
     _uiState.update { it.copy(useRealRoute = use) }
+}
+
+internal fun MainViewModel.setRouteLateralDeviation(enabled: Boolean) {
+    _uiState.update { it.copy(routeLateralDeviation = enabled) }
 }
 
 internal fun MainViewModel.setStopAtDestination(stop: Boolean) {
@@ -191,6 +196,7 @@ internal fun MainViewModel.setIsAutoCadence(auto: Boolean) {
 
 internal fun MainViewModel.startRoutePlanning() {
     val state = _uiState.value
+    if (state.isFetchingRoute || state.routePlanStage == RoutePlanStage.RUNNING) return
     if (state.isContinuousScanning || state.isStoppingCollection) {
         android.widget.Toast.makeText(
             context,
@@ -200,96 +206,104 @@ internal fun MainViewModel.startRoutePlanning() {
         return
     }
     if (state.routePoints.size < 2) return
+    if (!validRouteWaypoints(state.routePoints)) {
+        android.widget.Toast.makeText(context, context.getString(R.string.invalid_route_waypoints), android.widget.Toast.LENGTH_SHORT).show()
+        return
+    }
     // 手动模式完全靠悬浮摇杆操作，没有悬浮窗权限就不启动，免得路线停在起点无法控制
     if (state.routeRunMode == RouteRunMode.MANUAL && !ensureOverlayPermission()) return
 
+    val generation = ++routePlanGeneration
     if (state.useRealRoute) {
         _uiState.update { it.copy(isFetchingRoute = true) }
-        fetchRealRouteAndStart(state.routePoints, state)
+        fetchRealRouteAndStart(state.routePoints, state, generation)
     } else {
-        startSimulationWithPoints(state.routePoints, state)
+        startSimulationWithPoints(state.routePoints, state, generation)
     }
 }
 
-private fun MainViewModel.fetchRealRouteAndStart(points: List<RoutePoint>, state: AppState) {
-    viewModelScope.launch(Dispatchers.IO) {
+internal fun MainViewModel.cancelPendingRoadRoute() {
+    routePlanGeneration++
+    routePlanJob?.cancel()
+    routePlanJob = null
+    _uiState.update { it.copy(isFetchingRoute = false) }
+}
+
+private fun MainViewModel.fetchRealRouteAndStart(points: List<RoutePoint>, state: AppState, generation: Long) {
+    routePlanJob = viewModelScope.launch(Dispatchers.IO) {
         try {
             com.amap.api.services.core.ServiceSettings.updatePrivacyShow(context, true, true)
             com.amap.api.services.core.ServiceSettings.updatePrivacyAgree(context, true)
 
             val routeSearch = com.amap.api.services.route.RouteSearch(context)
-            val allRealPoints = mutableListOf<RoutePoint>()
-            var hasError = false
-
-            for (i in 0 until points.size - 1) {
-                // 从起点到终点，中间点作为途经点
-                val start = com.amap.api.services.core.LatLonPoint(points[i].lat, points[i].lng)
-                val end =
-                    com.amap.api.services.core.LatLonPoint(points[i + 1].lat, points[i + 1].lng)
-                val fromAndTo = com.amap.api.services.route.RouteSearch.FromAndTo(start, end)
-
-                // 创建驾车路线查询 (0: 速度优先，不考虑路况)
-                val query = com.amap.api.services.route.RouteSearch.DriveRouteQuery(
-                    fromAndTo,
-                    com.amap.api.services.route.RouteSearch.DrivingDefault,
-                    null,
-                    null,
-                    ""
+            val allRealPoints = planRoadSegments(points, state.routeTravelMode) { startPoint, endPoint, mode ->
+                if (!isActive) throw kotlinx.coroutines.CancellationException("Route planning cancelled")
+                val fromAndTo = com.amap.api.services.route.RouteSearch.FromAndTo(
+                    com.amap.api.services.core.LatLonPoint(startPoint.lat, startPoint.lng),
+                    com.amap.api.services.core.LatLonPoint(endPoint.lat, endPoint.lng)
                 )
-
-                val result = routeSearch.calculateDriveRoute(query)
-                if (result != null && result.paths.isNotEmpty()) {
-                    val path = result.paths[0]
-                    val segmentPoints = mutableListOf<RoutePoint>()
-                    val stepEndIndices = mutableListOf<Int>()
-                    for (step in path.steps) {
-                        for (polyline in step.polyline) {
-                            segmentPoints.add(
-                                RoutePoint(
-                                    polyline.latitude,
-                                    polyline.longitude,
-                                    0.0
-                                )
-                            )
-                        }
-                        if (segmentPoints.isNotEmpty()) {
-                            stepEndIndices.add(segmentPoints.size - 1)
+                when (mode) {
+                    RouteTravelMode.WALKING -> {
+                        val query = com.amap.api.services.route.RouteSearch.WalkRouteQuery(
+                            fromAndTo, com.amap.api.services.route.RouteSearch.WalkDefault)
+                        routeSearch.calculateWalkRoute(query)?.paths?.firstOrNull()?.steps
+                            ?.flatMap { step -> step.polyline.map { RoutePoint(it.latitude, it.longitude) } }
+                    }
+                    RouteTravelMode.CYCLING -> {
+                        val query = com.amap.api.services.route.RouteSearch.RideRouteQuery(
+                            fromAndTo, com.amap.api.services.route.RouteSearch.RidingDefault)
+                        routeSearch.calculateRideRoute(query)?.paths?.firstOrNull()?.steps
+                            ?.flatMap { step -> step.polyline.map { RoutePoint(it.latitude, it.longitude) } }
+                    }
+                    RouteTravelMode.DRIVING -> {
+                        val query = com.amap.api.services.route.RouteSearch.DriveRouteQuery(
+                            fromAndTo, com.amap.api.services.route.RouteSearch.DrivingDefault, null, null, "")
+                        val path = routeSearch.calculateDriveRoute(query)?.paths?.firstOrNull()
+                        path?.let {
+                            val segment = mutableListOf<RoutePoint>()
+                            val stepEnds = mutableListOf<Int>()
+                            for (step in it.steps) {
+                                for (point in step.polyline) segment.add(RoutePoint(point.latitude, point.longitude))
+                                if (segment.isNotEmpty()) stepEnds.add(segment.size - 1)
+                            }
+                            if (it.totalTrafficlights > 0 && stepEnds.isNotEmpty()) {
+                                stepEnds.shuffled().take(it.totalTrafficlights).forEach { index ->
+                                    segment[index] = segment[index].copy(waitSec = 15.0)
+                                }
+                            }
+                            segment
                         }
                     }
-                    val trafficLights = path.totalTrafficlights
-                    if (trafficLights > 0 && stepEndIndices.isNotEmpty()) {
-                        stepEndIndices.shuffled().take(trafficLights).forEach { idx ->
-                            segmentPoints[idx] = segmentPoints[idx].copy(waitSec = 15.0)
-                        }
-                    }
-                    allRealPoints.addAll(segmentPoints)
-                } else {
-                    hasError = true
-                    break
                 }
             }
 
-            if (!hasError && allRealPoints.isNotEmpty()) {
+            if (allRealPoints != null) {
                 withContext(Dispatchers.Main) {
+                    if (generation != routePlanGeneration || !_uiState.value.isFetchingRoute) return@withContext
                     _uiState.update { it.copy(isFetchingRoute = false) }
-                    startSimulationWithPoints(allRealPoints, state)
+                    startSimulationWithPoints(allRealPoints, state, generation)
                 }
             } else {
                 withContext(Dispatchers.Main) {
+                    if (generation != routePlanGeneration || !_uiState.value.isFetchingRoute) return@withContext
                     _uiState.update { it.copy(isFetchingRoute = false) }
                     android.widget.Toast.makeText(
                         context,
                         context.getString(R.string.route_plan_failed_fallback_straight),
                         android.widget.Toast.LENGTH_SHORT
                     ).show()
-                    startSimulationWithPoints(points, state)
+                    startSimulationWithPoints(points, state, generation)
                 }
             }
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
         } catch (e: Exception) {
             e.printStackTrace()
             withContext(Dispatchers.Main) {
+                if (generation != routePlanGeneration || !_uiState.value.isFetchingRoute) return@withContext
                 _uiState.update { it.copy(isFetchingRoute = false) }
                 var msg = context.getString(R.string.route_request_exception, e.message ?: "")
+                var includesFallback = false
                 if (e is com.amap.api.services.core.AMapException) {
                     val errCode = e.errorCode
                     val errMsg = e.errorMessage ?: ""
@@ -298,17 +312,19 @@ private fun MainViewModel.fetchRealRouteAndStart(points: List<RoutePoint>, state
                         errMsg.contains("额度") || errMsg.contains("limit", ignoreCase = true)
                     ) {
                         msg = context.getString(R.string.amap_quota_exhausted_fallback_format, errMsg)
+                        includesFallback = true
                     }
                 }
+                if (!includesFallback) msg = context.getString(R.string.route_plan_failed_fallback_straight) + "\n" + msg
                 android.widget.Toast.makeText(context, msg, android.widget.Toast.LENGTH_LONG)
                     .show()
-                startSimulationWithPoints(points, state)
+                startSimulationWithPoints(points, state, generation)
             }
         }
     }
 }
 
-private fun MainViewModel.startSimulationWithPoints(pointsToRun: List<RoutePoint>, state: AppState) {
+private fun MainViewModel.startSimulationWithPoints(pointsToRun: List<RoutePoint>, state: AppState, generation: Long) {
     val startPoint = pointsToRun.first()
 
     _uiState.update {
@@ -333,7 +349,9 @@ private fun MainViewModel.startSimulationWithPoints(pointsToRun: List<RoutePoint
         // 配置必须来自路线起点，避免将此前地图位置的环境数据带入模拟。
         val records = environmentRecordsAt(startPoint.lat, startPoint.lng)
         val (wifi, cell, bluetooth) = locationToJson(records, startPoint.lat, startPoint.lng)
+        if (generation != routePlanGeneration || _uiState.value.routePlanStage != RoutePlanStage.RUNNING) return@launch
         _uiState.update { it.copy(collectedWifiJson = wifi, collectedCellJson = cell, collectedBluetoothJson = bluetooth) }
+        realRouteRecorder.pauseForSimulation()
         locationRepository.startSpoofing(
             context,
             startPoint.lat,
@@ -355,11 +373,13 @@ private fun MainViewModel.startSimulationWithPoints(pointsToRun: List<RoutePoint
             stopAtDestination = _uiState.value.stopAtDestination,
             enableStepSimulation = _uiState.value.enableStepSimulation,
             stepCadenceSpm = _uiState.value.stepCadenceSpm,
-            isAutoCadence = _uiState.value.isAutoCadence
+            isAutoCadence = _uiState.value.isAutoCadence,
+            routeLateralDeviation = state.routeLateralDeviation
         )
         val preset = MotionController.SpeedPreset(_uiState.value.routeSimMode.name, joystickMaxSpeedMs().toDouble())
         // 手动模式同样加载路线，只是以暂停状态开始、由悬浮摇杆控制，点"开始"后沿路线前进
-        motionController.onRouteStarted(pointsToRun, preset, _uiState.value.stopAtDestination, now, startPaused = !isLoop)
+        motionController.onRouteStarted(pointsToRun, preset, _uiState.value.stopAtDestination, now,
+            startPaused = !isLoop, lateralDeviation = state.routeLateralDeviation)
         // 悬浮摇杆只在手动模式下出现；停止模拟后它会随 MotionController 结束会话自行关闭
         if (!isLoop) locationRepository.setFloatingJoystickVisible(context, true)
         _uiState.update {
@@ -371,6 +391,7 @@ private fun MainViewModel.startSimulationWithPoints(pointsToRun: List<RoutePoint
 /** 停止路线模拟，重置所有状态 */
 
 internal fun MainViewModel.cancelRoutePlanning() {
+    cancelPendingRoadRoute()
     _uiState.update {
         it.copy(
             routePlanStage = RoutePlanStage.IDLE,
@@ -381,6 +402,7 @@ internal fun MainViewModel.cancelRoutePlanning() {
 }
 
 internal fun MainViewModel.stopRoutePlanning() {
+    cancelPendingRoadRoute()
     settingsRepository.isSpoofingActive = false
     locationSyncJob?.cancel()
     locationSyncJob = null

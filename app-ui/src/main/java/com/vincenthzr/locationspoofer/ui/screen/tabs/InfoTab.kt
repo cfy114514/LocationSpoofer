@@ -129,6 +129,7 @@ fun InfoTab(
             MapEngine.AMAP -> amapText
             MapEngine.BAIDU -> baiduText
             MapEngine.GOOGLE -> googleText
+            MapEngine.OSM -> "OpenStreetMap"
         }
     }
 
