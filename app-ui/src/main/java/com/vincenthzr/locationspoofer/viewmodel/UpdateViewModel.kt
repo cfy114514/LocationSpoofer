@@ -37,16 +37,17 @@ class UpdateViewModel(private val context: Context) : ViewModel() {
     private val updateManager = UpdateManager(context)
     private val okHttpClient = OkHttpClient()
 
-    private val isCoexistBuild: Boolean get() = context.packageName == "com.vincenthzr.locationspoofer.cfytest"
+    private val isTestDistribution: Boolean get() =
+        context.packageName == "com.vincenthzr.locationspoofer.cfytest" || BuildConfig.VERSION_NAME.endsWith("-test")
 
-    private fun blockCoexistUpdater(): Boolean {
-        if (!isCoexistBuild) return false
-        _uiState.update { it.copy(isLoading = false, error = context.getString(R.string.coexist_updater_disabled)) }
+    private fun blockTestUpdater(): Boolean {
+        if (!isTestDistribution) return false
+        _uiState.update { it.copy(isLoading = false, error = context.getString(R.string.test_updater_disabled)) }
         return true
     }
 
     fun fetchReleases() {
-        if (blockCoexistUpdater()) return
+        if (blockTestUpdater()) return
         _uiState.update { it.copy(isLoading = true, error = null) }
         viewModelScope.launch(Dispatchers.IO) {
             try {
@@ -122,7 +123,7 @@ class UpdateViewModel(private val context: Context) : ViewModel() {
     }
 
     fun startDownload(url: String, versionName: String) {
-        if (blockCoexistUpdater()) return
+        if (blockTestUpdater()) return
         val fileName = "LocationSpoofer_$versionName.apk"
         val downloadId = updateManager.downloadApk(url, fileName)
         _uiState.update {
@@ -160,7 +161,7 @@ class UpdateViewModel(private val context: Context) : ViewModel() {
     }
 
     fun installApk() {
-        if (blockCoexistUpdater()) return
+        if (blockTestUpdater()) return
         _uiState.value.activeDownloadId?.let { downloadId ->
             updateManager.installApk(downloadId)
         }

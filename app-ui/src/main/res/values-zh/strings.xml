@@ -695,4 +695,5 @@
     <string name="real_route_stats_rules">距离按已记录点连线计算，包含暂停后的直线连接。时长仅累计录制期间，暂停不计；应用进程重启后归零。</string>
     <string name="road_travel_mode">道路规划方式</string>
     <string name="road_travel_mode_hint">道路规划使用高德地图，模拟速度单独设置；规划失败时将提示并使用直线路线。</string>
+    <string name="test_updater_disabled">测试版请从 GitHub 的 cfy114514/LocationSpoofer 发布页面手动下载更新。</string>
 </resources>

@@ -695,4 +695,5 @@ Error details: %s</string>
     <string name="real_route_stats_rules">Distance follows recorded points, including straight connections after pauses. Time counts only while recording and resets when the app process restarts.</string>
     <string name="road_travel_mode">Road travel mode</string>
     <string name="road_travel_mode_hint">Road selection uses AMap; simulation speed is set separately. On failure, the route falls back to straight lines.</string>
+    <string name="test_updater_disabled">Test builds use manual updates. Download updates from cfy114514/LocationSpoofer on GitHub.</string>
 </resources>
