@@ -26,6 +26,12 @@ jobs:
           path: app/build/outputs/apk/scoped/coexist/*.apk
           if-no-files-found: error
       - run: ./gradlew --no-daemon :app:assembleGlobalDebug
+      - run: ./gradlew --no-daemon :app:assembleScopedDebug -PAPP_VERSION_NAME=3.0.0-test
+      - uses: actions/upload-artifact@v4
+        with:
+          name: scoped-standard-test-apks
+          path: app/build/outputs/apk/scoped/debug/*.apk
+          if-no-files-found: error
       - run: ./gradlew --no-daemon :app-ui:assembleScopedDebugAndroidTest
       - uses: actions/upload-artifact@v4
         with:
